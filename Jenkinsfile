@@ -21,17 +21,17 @@ pipeline {
                     if (params.ACTION == 'add') {
                         echo "Running 'add' job..."
                         echo "Cluster name is ${params.CLUSTER_NAME}"
-
                         // Ensure script is executable before running
                         sh """
-                        chmod +x ./scripts/add_cluster.sh
-                        ./scripts/add_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                        pwd
+                        chmod +x ./manageiq-jobs/scripts/add_cluster.sh
+                        ./manageiq-jobs/scripts/add_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
                         """
                     } else if (params.ACTION == 'delete') {
                         echo "Running 'delete' job..."
                         sh """
-                        chmod +x ./scripts/delete_cluster.sh
-                        ./scripts/delete_cluster.sh
+                        chmod +x ./manageiq-jobs/scripts/delete_cluster.sh
+                        ./manageiq-jobs/scripts/delete_cluster.sh
                         """
                     } else {
                         error "Invalid action selected. Choose 'add' or 'delete'."
