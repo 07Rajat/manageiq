@@ -14,26 +14,23 @@ pipeline {
         string(name: 'SERVICE_ACCOUNT_NAME', defaultValue: 'management-admin', description: 'Service account name')
     }
 
-    environment {
-        CLUSTER_NAME = "${params.CLUSTER_NAME}"
-        USERNAME = "${params.USERNAME}"
-        PASSWORD = "${params.PASSWORD}"
-        OCP_URL = "${params.OCP_URL}"
-        MQ_SERVER = "${params.MQ_SERVER}"
-        MQ_USER = "${params.MQUSER}"
-        MQ_PASS = "${params.MQPASS}"
-        PROJECT_NAME = "${params.PROJECT_NAME}"
-        SERVICE_ACCOUNT_NAME = "${params.SERVICE_ACCOUNT_NAME}"
-    }
-
     stages {
         stage('Run Script') {
             steps {
                 script {
+                    
+                    def clusterName = params.CLUSTER_NAME
+                    def username = params.USERNAME
+                    def password = params.PASSWORD
+                    def ocpUrl = params.OCP_URL
+                    def mqServer = params.MQ_SERVER
+                    def mqUser = params.MQUSER
+                    def mqPass = params.MQPASS
+
                     if (params.ACTION == 'add') {
                         echo "Running 'add' job..."
-                        echo "Cluster name is ${CLUSTER_NAME}"
-                        sh "./scripts/add_cluster.sh -n ${CLUSTER_NAME} -u ${USERNAME} -p ${PASSWORD} -s ${OCP_URL} -m ${MQ_SERVER} -t ${MQ_USER} -r ${MQ_PASS}"
+                        echo "Cluster name is ${clusterName}"
+                        sh "./scripts/add_cluster.sh -n ${clusterName} -u ${username} -p ${password} -s ${ocpUrl} -m ${mqServer} -t ${mqUser} -r ${mqPass}"
                     } else if (params.ACTION == 'delete') {
                         echo "Running 'delete' job..."
                         sh "./scripts/delete_cluster.sh"
