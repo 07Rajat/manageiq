@@ -18,22 +18,21 @@ pipeline {
         stage('Run Script') {
             steps {
                 script {
-                    
-                    def clusterName = params.CLUSTER_NAME
-                    def username = params.USERNAME
-                    def password = params.PASSWORD
-                    def ocpUrl = params.OCP_URL
-                    def mqServer = params.MQ_SERVER
-                    def mqUser = params.MQUSER
-                    def mqPass = params.MQPASS
-
                     if (params.ACTION == 'add') {
                         echo "Running 'add' job..."
-                        echo "Cluster name is ${clusterName}"
-                        sh "./scripts/add_cluster.sh -n ${clusterName} -u ${username} -p ${password} -s ${ocpUrl} -m ${mqServer} -t ${mqUser} -r ${mqPass}"
+                        echo "Cluster name is ${params.CLUSTER_NAME}"
+
+                        // Ensure script is executable before running
+                        sh """
+                        chmod +x ./scripts/add_cluster.sh
+                        ./scripts/add_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                        """
                     } else if (params.ACTION == 'delete') {
                         echo "Running 'delete' job..."
-                        sh "./scripts/delete_cluster.sh"
+                        sh """
+                        chmod +x ./scripts/delete_cluster.sh
+                        ./scripts/delete_cluster.sh
+                        """
                     } else {
                         error "Invalid action selected. Choose 'add' or 'delete'."
                     }

@@ -85,15 +85,15 @@ function main() {
     PROJECT_NAME="management-manageiq"
     SERVICE_ACCOUNT_NAME="management-admin"
 
-    log.debug "Cluster Name is: $CLUSTER_NAME"
 
     HOSTNAME=$(echo $OCP_URL | awk -F'://' '{print $2}' | awk -F':' '{print $1}')
 
-    log.debug "OCP API URL is: $HOSTNAME"
+    echo $HOSTNAME
 
     PORT=$(echo $OCP_URL | awk -F'://' '{print $2}' | awk -F':' '{print $2}')
 
-    log.debug "OCP API Port is: $PORT"
+    echo $PORT
+
 
     # Create service account for manageIQ
     __ocUtils.oc_login_user "${OCP_URL}" "${USERNAME}" "${PASSWORD}" "--insecure-skip-tls-verify"
@@ -105,7 +105,6 @@ function main() {
     oc create serviceaccount $SERVICE_ACCOUNT_NAME -n $PROJECT_NAME
 
     # Create the cluster role
-    #echo '{"apiVersion": "v1", "kind": "ClusterRole", "metadata": {"name": "management-manageiq-admin"}, "rules": [{"resources": ["pods/proxy"], "verbs": ["*"]}]}' | oc create -f -
     echo '{"apiVersion": "authorization.openshift.io/v1", "kind": "ClusterRole", "metadata": {"name": "management-manageiq-admin"}, "rules": [{"resources": ["pods/proxy"], "verbs": ["*"]}]}' | oc create -f -
 
     # Apply roles and policies to the service account
@@ -128,7 +127,7 @@ function main() {
     curl --user $MQUSER:$MQPASS --insecure --request POST ${MQ_SERVER}/api/providers -d '{"action":"create","name":"'${CLUSTER_NAME}'","port":'${PORT}',"type":"ManageIQ::Providers::Openshift::ContainerManager","hostname":"'${HOSTNAME}'","connection_configurations":[{"endpoint":{"role":"default","security_protocol":"ssl-without-validation","verify_ssl":0},"authentication":{"authtype":"bearer","type":"AuthToken","auth_key":"'${TOKEN}'"}},{"endpoint": {"role": "prometheus","hostname": "'${METRICS_ROUTE}'","port": 443,"security_protocol":"ssl-without-validation"}}]}'
     returnCode=$?
     if [[ ${returnCode} != 0 ]]; then
-      log.error "Cluster creation failed with returnCode: ${returnCode}"
+      echo "returnCode: $returnCode"
       exit 1
     fi
 }
