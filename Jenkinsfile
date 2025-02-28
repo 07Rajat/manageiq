@@ -31,7 +31,8 @@ pipeline {
                         echo "Running 'delete' job..."
                         sh """
                         chmod +x ./manageiq-jobs/scripts/delete_cluster.sh
-                        ./manageiq-jobs/scripts/delete_cluster.sh
+                        ./manageiq-jobs/scripts/delete_cluster.sh -n ${params.CLUSTER_NAME} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+
                         """
                     } else {
                         error "Invalid action selected. Choose 'add' or 'delete'."
