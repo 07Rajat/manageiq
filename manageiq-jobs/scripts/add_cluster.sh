@@ -96,7 +96,7 @@ function main() {
 
 
     # Create service account for manageIQ
-    __ocUtils.oc_login_user "${OCP_URL}" "${USERNAME}" "${PASSWORD}" "--insecure-skip-tls-verify"
+    oc login -u "${USERNAME}" -p "${PASSWORD}" "${OCP_URL}" --insecure-skip-tls-verify
 
     # Create a namespace for the service account
     oc adm new-project $PROJECT_NAME --description="ManageIQ Project"
