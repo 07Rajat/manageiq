@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'CLUSTER_NAME', defaultValue: '', description: 'Name of the cluster')
+        string(name: 'USERNAME', defaultValue: '', description: 'OpenShift username')
+        string(name: 'PASSWORD', defaultValue: '', description: 'OpenShift password')
+        string(name: 'OCP_URL', defaultValue: '', description: 'OpenShift API URL')
+        string(name: 'MQ_SERVER', defaultValue: '', description: 'ManageIQ server URL')
+        string(name: 'MQUSER', defaultValue: '', description: 'ManageIQ username')
+        string(name: 'MQPASS', defaultValue: '', description: 'ManageIQ password')
+    }
+
+    stages {
+        stage('Add Cluster') {
+            steps {
+                script {
+                    echo "Running 'add' job..."
+                    echo "Adding cluster: ${params.CLUSTER_NAME}"
+                    sh """
+                    chmod +x ./manageiq-jobs/scripts/add_cluster.sh
+                    ./manageiq-jobs/scripts/add_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Cluster added successfully!"
+        }
+        failure {
+            echo "Failed to add cluster. Check logs for errors."
+        }
+    }
+}
+

@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'CLUSTER_NAME', defaultValue: '', description: 'Name of the cluster')
+        string(name: 'MQ_SERVER', defaultValue: '', description: 'ManageIQ server URL')
+        string(name: 'MQUSER', defaultValue: '', description: 'ManageIQ username')
+        string(name: 'MQPASS', defaultValue: '', description: 'ManageIQ password')
+    }
+
+    stages {
+        stage('Delete Cluster') {
+            steps {
+                script {
+                    echo "Running 'delete' job..."
+                    echo "Deleting cluster: ${params.CLUSTER_NAME}"
+                    sh """
+                    chmod +x ./manageiq-jobs/scripts/delete_cluster.sh
+                    ./manageiq-jobs/scripts/delete_cluster.sh -n ${params.CLUSTER_NAME} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Cluster deleted successfully!"
+        }
+        failure {
+            echo "Failed to delete cluster. Check logs for errors."
+        }
+    }
+}
