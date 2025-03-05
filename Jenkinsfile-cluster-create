@@ -26,7 +26,7 @@ pipeline {
                     def requestedMemory = ${params.REQUESTED_MEMORY}.toInteger()
                     
                     // Run the Python script to fetch data
-                    def fetchCommand = "python3 scripts/fetch_resources.py ${params.DB_NAME} ${params.teamName} ${params.MONGODB_URI}"
+                    def fetchCommand = "python3 ./manageiq-jobs/scripts/fetch_resources.py ${params.DB_NAME} ${params.teamName} ${params.MONGODB_URI}"
                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
                     
                     // Parse JSON output from Python script
