@@ -4,11 +4,11 @@ pipeline {
     parameters {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
         string(name: 'REPO_URL', defaultValue: 'https://github.com/your-username/terraform-repo.git', description: 'Git repository URL for Terraform code')
-    }
-
-    environment {
-        IBM_API_KEY = "${params.IBM_API_KEY}"
-        REPO_URL = "${params.REPO_URL}"
+        string(name: 'TEAM_NAME', defaultValue: 'Squad_Dev', description: 'Enter the Team Name')
+        string(name: 'DB_NAME', defaultValue: 'Squads', description: 'Enter the Database Name')
+        string(name: 'MongoURL', defaultValue: 'mongodb+srv://username:password.sm7ns.mongodb.net/?retryWrites=true&w=majority&appName=manageiq', description: 'Enter the Mongodb URL')
+        string(name: 'REQUESTED_CPU', defaultValue: '64', description: 'Requested CPU')
+        string(name: 'REQUESTED_MEMORY', defaultValue: '256', description: 'Requested Memory (GB)')
     }
 
     stages {
@@ -18,26 +18,57 @@ pipeline {
             }
         }
 
-        stage('Run Create Cluster Script') {
+        stage('Fetch Resource Allocation') {
             steps {
                 script {
+                    def teamName = ${params.TEAM_NAME}
+                    def requestedCPU = ${params.REQUESTED_CPU}.toInteger()
+                    def requestedMemory = ${params.REQUESTED_MEMORY}.toInteger()
+                    
+                    // Run the Python script to fetch data
+                    def fetchCommand = "python3 scripts/fetch_resources.py ${params.DB_NAME} ${params.teamName} ${params.MONGODB_URI}"
+                    def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
+                    
+                    // Parse JSON output from Python script
+                    def resourceData = readJSON(text: fetchOutput)
+                    
+                    if (resourceData.error) {
+                        error "Error: ${resourceData.error}"
+                    }
+                    
+                    def allocatedCPU = resourceData.allocated_cpu.toInteger()
+                    def allocatedMemory = resourceData.allocated_memory_gb.toInteger()
 
-                    // Execute the script with parameters
-                    sh """
-                    chmod +x ./manageiq-jobs/scripts/scripts/create-cluster.sh
-                    ./manageiq-jobs/scripts/scripts/create_cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
-                    """
+                    // Compare Requested vs Allocated
+                    if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
+                        error "Error: Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+                    }
+
+                    echo "Resources available. Proceeding with Terraform..."
                 }
             }
         }
+
+        // stage('Run Create Cluster Script') {
+        //     steps {
+        //         script {
+
+        //             // Execute the script with parameters
+        //             sh """
+        //             chmod +x ./manageiq-jobs/scripts/scripts/create-cluster.sh
+        //             ./manageiq-jobs/scripts/scripts/create_cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+        //             """
+        //         }
+        //     }
+        // }
     }
 
-    post {
-        success {
-            echo "Cluster creation completed successfully!"
-        }
-        failure {
-            echo "Cluster creation failed. Check the logs for details."
-        }
-    }
+    // post {
+    //     success {
+    //         echo "Cluster creation completed successfully!"
+    //     }
+    //     failure {
+    //         echo "Cluster creation failed. Check the logs for details."
+    //     }
+    // }
 }
