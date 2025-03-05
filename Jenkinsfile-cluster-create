@@ -18,6 +18,14 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    sh 'pip3 install pymongo'
+                }
+            }
+        }
+
         stage('Fetch Resource Allocation') {
             steps {
                 script {
@@ -26,9 +34,16 @@ pipeline {
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
                     
                     // Run the Python script to fetch data
-                    def fetchCommand = "python3 ./manageiq-jobs/scripts/fetch_resources.py ${params.DB_NAME} ${teamName} ${params.MongoURL}"
+                    def fetchCommand = "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'"
                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
                     
+                    // Debugging output
+                    echo "Fetch output: ${fetchOutput}"
+
+                    if (!fetchOutput?.trim()) {
+                        error "Error: Fetch output is empty. Check if the script executed correctly."
+                    }
+
                     // Parse JSON output from Python script
                     def resourceData = readJSON(text: fetchOutput)
 
