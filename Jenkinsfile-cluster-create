@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm
+                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: "https://github.com/07Rajat/terraform-repo.git"
             }
         }
 
