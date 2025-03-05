@@ -14,25 +14,25 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: "https://github.com/07Rajat/terraform-repo.git"
+                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: "https://github.com/07Rajat/manageiq.git"
             }
         }
 
         stage('Fetch Resource Allocation') {
             steps {
                 script {
-                    def teamName = ${params.TEAM_NAME}
-                    def requestedCPU = ${params.REQUESTED_CPU}.toInteger()
-                    def requestedMemory = ${params.REQUESTED_MEMORY}.toInteger()
+                    def teamName = params.TEAM_NAME
+                    def requestedCPU = params.REQUESTED_CPU.toInteger()
+                    def requestedMemory = params.REQUESTED_MEMORY.toInteger()
                     
                     // Run the Python script to fetch data
-                    def fetchCommand = "python3 ./manageiq-jobs/scripts/fetch_resources.py ${params.DB_NAME} ${params.teamName} ${params.MONGODB_URI}"
+                    def fetchCommand = "python3 ./manageiq-jobs/scripts/fetch_resources.py ${params.DB_NAME} ${teamName} ${params.MongoURL}"
                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
                     
                     // Parse JSON output from Python script
                     def resourceData = readJSON(text: fetchOutput)
-                    
-                    if (resourceData.error) {
+
+                    if (resourceData.containsKey('error')) {
                         error "Error: ${resourceData.error}"
                     }
                     
