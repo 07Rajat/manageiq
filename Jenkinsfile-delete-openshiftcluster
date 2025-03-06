@@ -42,6 +42,20 @@ pipeline {
                 }
             }
 
+            stage('Initialize Terraform Providers') {
+                steps {
+                    script {
+                        sh '''
+                            # Navigate to the Terraform directory
+                            cd terraform-repo
+    
+                            # Initialize Terraform (this will download the required providers)
+                            terraform init
+                        '''
+                    }
+                }
+            }
+
             stage('Run Delete Cluster Script') {
                 steps {
                     script {
