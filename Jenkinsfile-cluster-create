@@ -26,8 +26,10 @@ pipeline {
                     
                     // Activate the virtual environment and install pymongo
                     sh '''
+                        python3 -m venv venv
                         . venv/bin/activate
-                        pip install pymongo
+                        pip install --upgrade pip
+                        pip install "pymongo[srv]"
                     '''
                 }
             }
