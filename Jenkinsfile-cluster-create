@@ -21,7 +21,14 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    sh 'pip3 install pymongo'
+                    // Create a virtual environment
+                    sh 'python3 -m venv venv'
+                    
+                    // Activate the virtual environment and install pymongo
+                    sh '''
+                        . venv/bin/activate
+                        pip install pymongo
+                    '''
                 }
             }
         }
