@@ -7,16 +7,38 @@ pipeline {
     }
 
 
-        stages {
-            stage('Checkout Code') {
-                steps {
-                    checkout scm
+            stages {
+                stage('Checkout Code') {
+                    steps {
+                        checkout scm
+                    }
                 }
-            }
     
-            stage('Check Terraform Version') {
+            stage('Install Terraform') {
                 steps {
-                    sh 'terraform version'
+                    script {
+                        // Install Terraform in a user-writable directory
+                        sh '''
+                            # Set the Terraform version
+                            TERRAFORM_VERSION="1.5.0"
+    
+                            # Create a bin directory in the user's home directory
+                            mkdir -p ${HOME}/bin
+    
+                            # Download and install Terraform
+                            cd ${HOME}/bin
+                            wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                            unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                            rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+    
+                            # Add the bin directory to PATH
+                            echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
+                            source ${HOME}/.bashrc
+    
+                            # Verify installation
+                            terraform --version
+                        '''
+                    }
                 }
             }
 
