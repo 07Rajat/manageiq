@@ -76,8 +76,8 @@ pipeline {
 
                     // Execute the script with parameters
                     sh """
-                    chmod +x ./manageiq-jobs/scripts/scripts/create-openshift-cluster.sh
-                    ./manageiq-jobs/scripts/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+                    chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
+                    ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
                     """
                 }
             }

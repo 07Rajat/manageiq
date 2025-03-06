@@ -18,8 +18,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    chmod +x ./manageiq-jobs/scripts/scripts/delete-openshift-cluster.sh
-                    ./manageiq-jobs/scripts/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
+                    chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
+                    ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
                     """
                 }
             }
