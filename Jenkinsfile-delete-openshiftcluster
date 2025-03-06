@@ -3,13 +3,9 @@ pipeline {
 
     parameters {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
-        string(name: 'REPO_URL', defaultValue: 'https://github.com/your-username/terraform-repo.git', description: 'Git repository URL for Terraform code')
+        string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
     }
 
-    environment {
-        IBM_API_KEY = "${params.IBM_API_KEY}"
-        REPO_URL = "${params.REPO_URL}"
-    }
 
     stages {
         stage('Checkout Code') {
@@ -22,8 +18,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    chmod +x ./manageiq-jobs/scripts/scripts/delete-cluster.sh
-                    ./manageiq-jobs/scripts/scripts/delete_cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+                    chmod +x ./manageiq-jobs/scripts/scripts/delet-openshift-cluster.sh
+                    ./manageiq-jobs/scripts/scripts/delet-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
                     """
                 }
             }

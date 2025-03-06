@@ -6,13 +6,13 @@ def fetch_resources(db_name, team_name, mongodb_uri):
     try:
         # Connect to MongoDB
         client = pymongo.MongoClient(mongodb_uri)
-        db = client[db_name]  # Database is now dynamic
+        db = client[db_name]
         
         # Use the team name as the collection name (dynamic)
         collection = db[team_name]
 
         # Fetch allocated resources for the team
-        team_data = collection.find_one({})  # Fetch first document in the collection
+        team_data = collection.find_one({}) 
 
         if team_data:
             allocated_cpu = team_data.get("Allocated_CPU")

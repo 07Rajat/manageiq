@@ -3,20 +3,15 @@ pipeline {
 
     parameters {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
-        string(name: 'REPO_URL', defaultValue: 'https://github.com/your-username/terraform-repo.git', description: 'Git repository URL for Terraform code')
-        string(name: 'TEAM_NAME', defaultValue: 'Squad_Dev', description: 'Enter the Team Name')
-        string(name: 'DB_NAME', defaultValue: 'Squads', description: 'Enter the Database Name')
-        string(name: 'MongoURL', defaultValue: 'mongodb+srv://username:password.sm7ns.mongodb.net/?retryWrites=true&w=majority&appName=manageiq', description: 'Enter the Mongodb URL')
-        string(name: 'REQUESTED_CPU', defaultValue: '64', description: 'Requested CPU')
-        string(name: 'REQUESTED_MEMORY', defaultValue: '256', description: 'Requested Memory (GB)')
+        string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
+        string(name: 'TEAM_NAME', defaultValue: '', description: 'Enter the Team Name')
+        string(name: 'DB_NAME', defaultValue: '', description: 'Enter the Database Name')
+        string(name: 'MongoURL', defaultValue: '', description: 'Enter the Mongodb URL')
+        string(name: 'REQUESTED_CPU', defaultValue: '', description: 'Requested CPU')
+        string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: "https://github.com/07Rajat/manageiq.git"
-            }
-        }
 
         stage('Install Dependencies') {
             steps {
@@ -49,7 +44,6 @@ pipeline {
                     """
                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
                     
-                    // Debugging output
                     echo "Fetch output: ${fetchOutput}"
 
                     if (!fetchOutput?.trim()) {
@@ -76,26 +70,26 @@ pipeline {
             }
         }
 
-        // stage('Run Create Cluster Script') {
-        //     steps {
-        //         script {
+        stage('Run Create Cluster Script') {
+            steps {
+                script {
 
-        //             // Execute the script with parameters
-        //             sh """
-        //             chmod +x ./manageiq-jobs/scripts/scripts/create-cluster.sh
-        //             ./manageiq-jobs/scripts/scripts/create_cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
-        //             """
-        //         }
-        //     }
-        // }
+                    // Execute the script with parameters
+                    sh """
+                    chmod +x ./manageiq-jobs/scripts/scripts/create-openshift-cluster.sh
+                    ./manageiq-jobs/scripts/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+                    """
+                }
+            }
+        }
     }
 
-    // post {
-    //     success {
-    //         echo "Cluster creation completed successfully!"
-    //     }
-    //     failure {
-    //         echo "Cluster creation failed. Check the logs for details."
-    //     }
-    // }
+    post {
+        success {
+            echo "Cluster creation completed successfully!"
+        }
+        failure {
+            echo "Cluster creation failed. Check the logs for details."
+        }
+    }
 }
