@@ -7,27 +7,27 @@ pipeline {
     }
 
 
-    stages {
-        stage('Checkout Code') {
-            steps {
-                checkout scm
+        stages {
+            stage('Checkout Code') {
+                steps {
+                    checkout scm
+                }
             }
-        }
-
+    
         stage('Install Terraform') {
             steps {
                 script {
                     // Install Terraform
                     sh '''
                         # Install prerequisites
-                        sudo yum install -y curl unzip
-
+                        yum install -y curl unzip
+        
                         # Download and install Terraform
                         TERRAFORM_VERSION="1.5.0"  # Replace with the desired version
                         wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
                         unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                        sudo mv terraform /usr/local/bin/
-
+                        mv terraform /usr/local/bin/
+        
                         # Verify installation
                         terraform --version
                     '''
