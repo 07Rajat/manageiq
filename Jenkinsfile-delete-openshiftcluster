@@ -17,32 +17,40 @@ pipeline {
             stage('Install Terraform') {
                 steps {
                     script {
-                        // Install Terraform in a user-writable directory
                         sh '''
                             # Set the Terraform version
-                            TERRAFORM_VERSION="1.5.0"
-    
-                            # Create a bin directory in the user's home directory
+                            TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
+           
+                             # Create a bin directory in the user's home directory
                             mkdir -p ${HOME}/bin
-    
-                            # Download and install Terraform
+           
+                             # Check if Terraform is already installed and is the correct version
+                            if [ -f "${HOME}/bin/terraform" ]; then
+                                CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
+                                if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
+                                    echo "Terraform ${TERRAFORM_VERSION} is already installed."
+                                    exit 0
+                                fi
+                            fi
+           
+                             # Download and install Terraform
                             cd ${HOME}/bin
                             wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                            unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                            unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
                             rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-    
-                            # Add the bin directory to PATH
+           
+                             # Add the bin directory to PATH
                             echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
                             source ${HOME}/.bashrc
-    
-                            # Verify installation
+           
+                             # Verify installation
                             terraform --version
                         '''
                     }
                 }
-            }
+           }
 
-            stage('Initialize Terraform Providers') {
+             stage('Initialize Terraform Providers') {
                 steps {
                     script {
                         sh '''
