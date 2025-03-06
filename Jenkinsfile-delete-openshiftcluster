@@ -20,35 +20,42 @@ pipeline {
                         sh '''
                             # Set the Terraform version
                             TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
-           
-                             # Create a bin directory in the user's home directory
+            
+                            # Create a bin directory in the user's home directory
                             mkdir -p ${HOME}/bin
-           
-                             # Check if Terraform is already installed and is the correct version
+            
+                            # Check if Terraform is already installed and is the correct version
                             if [ -f "${HOME}/bin/terraform" ]; then
                                 CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
                                 if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
                                     echo "Terraform ${TERRAFORM_VERSION} is already installed."
-                                    exit 0
+                                else
+                                    echo "Updating Terraform to version ${TERRAFORM_VERSION}..."
+                                    # Download and install Terraform
+                                    cd ${HOME}/bin
+                                    wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                    unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                                    rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
                                 fi
+                            else
+                                echo "Installing Terraform ${TERRAFORM_VERSION}..."
+                                # Download and install Terraform
+                                cd ${HOME}/bin
+                                wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                                rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
                             fi
-           
-                             # Download and install Terraform
-                            cd ${HOME}/bin
-                            wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                            unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
-                            rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-           
-                             # Add the bin directory to PATH
+            
+                            # Add the bin directory to PATH
                             echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
                             source ${HOME}/.bashrc
-           
-                             # Verify installation
+            
+                            # Verify installation
                             terraform --version
                         '''
                     }
                 }
-           }
+            }
 
              stage('Initialize Terraform Providers') {
                 steps {
