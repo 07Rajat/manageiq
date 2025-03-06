@@ -8,7 +8,7 @@ msg() {
 # Function to handle errors
 die() {
   local msg=$1
-  local code=${2:-1} # default return code is 1
+  local code=${2-1} # default return code is 1
   msg "$msg"
   exit "${code}"
 }
@@ -59,17 +59,27 @@ function main() {
   # Parse parameters
   parse_params "$@"
 
-  # Clone the Terraform repository
-  msg "Cloning Terraform repository..."
-  git clone "${REPO_URL}" terraform-repo || die "Failed to clone repository"
+  # Clone or update the Terraform repository
+  if [ -d "terraform-repo" ]; then
+    msg "Updating existing Terraform repository..."
+    cd terraform-repo
+    git pull || die "Failed to update repository"
+  else
+    msg "Cloning Terraform repository..."
+    git clone "${REPO_URL}" terraform-repo || die "Failed to clone repository"
+    cd terraform-repo
+  fi
 
   # Navigate to the Terraform directory
-  cd terraform-repo/ibm-cloud || die "Failed to navigate to IBM Cloud Terraform directory"
+  cd ibm-cloud || die "Failed to navigate to IBM Cloud Terraform directory"
 
-  # Initialize and destroy Terraform resources
-  msg "Destroying resources for IBM Cloud..."
-  terraform init || die "Terraform init failed for IBM Cloud"
-  terraform destroy -auto-approve -var="ibm_api_key=${IBM_API_KEY}" || die "Terraform destroy failed for IBM Cloud"
+  # Initialize Terraform
+  msg "Initializing Terraform..."
+  terraform init || die "Terraform init failed"
+
+  # Destroy Terraform resources
+  msg "Destroying Terraform resources..."
+  terraform destroy -auto-approve -var="ibm_api_key=${IBM_API_KEY}" || die "Terraform destroy failed"
 
   msg "Terraform destruction completed successfully!"
 }
