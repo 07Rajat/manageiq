@@ -85,16 +85,33 @@ pipeline {
                 }
             }
 
-            stage('Run Delete Cluster Script') {
+            stage('Debug PATH') {
                 steps {
                     script {
-                        sh """
-                        chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
-                        ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
-                        """
+                        withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
+                            sh '''
+                                echo "PATH: ${PATH}"
+                                which terraform
+                                terraform --version
+                            '''
+                        }
                     }
                 }
             }
+
+            stage('Run Delete Cluster Script') {
+                steps {
+                    script {
+                        // Set the PATH globally using withEnv
+                        withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
+                            sh """
+                            chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
+                            ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
+                            """
+                        }
+                    }
+                }
+             }
     }
 
     post {
