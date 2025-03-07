@@ -59,9 +59,16 @@ function main() {
   # Parse parameters
   parse_params "$@"
 
-  # Clone the Terraform repository
-  msg "Cloning Terraform repository..."
-  git clone "${REPO_URL}" terraform-repo || die "Failed to clone repository"
+  # Clone or update the Terraform repository
+  if [ -d "terraform-repo" ]; then
+    msg "Updating existing Terraform repository..."
+    cd terraform-repo
+    git pull || die "Failed to update repository"
+  else
+    msg "Cloning Terraform repository..."
+    git clone "${REPO_URL}" terraform-repo || die "Failed to clone repository"
+    cd terraform-repo
+  fi
 
   # Navigate to the Terraform directory
   cd terraform-repo/ibm-cloud || die "Failed to navigate to IBM Cloud Terraform directory"
@@ -69,6 +76,9 @@ function main() {
   # Initialize and apply Terraform
   msg "Executing Terraform for IBM Cloud..."
   terraform init || die "Terraform init failed for IBM Cloud"
+
+  # Create Terraform resources
+  msg "creating Terraform resources..."
   terraform apply -auto-approve -var="ibm_api_key=${IBM_API_KEY}" || die "Terraform apply failed for IBM Cloud"
 
   msg "Terraform execution completed successfully!"

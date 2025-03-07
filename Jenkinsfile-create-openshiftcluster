@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        PATH = "${env.HOME}/bin:${env.PATH}" 
+    }
+
     parameters {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
         string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
@@ -29,6 +33,75 @@ pipeline {
                 }
             }
         }
+        stage('Install Terraform') {
+                    steps {
+                        script {
+                            sh '''
+                                # Set the Terraform version
+                                TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
+
+                                # Create a bin directory in the user's home directory
+                                mkdir -p ${HOME}/bin
+
+                                # Check if Terraform is already installed and is the correct version
+                                if [ -f "${HOME}/bin/terraform" ]; then
+                                    CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
+                                    if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
+                                        echo "Terraform ${TERRAFORM_VERSION} is already installed."
+                                    else
+                                        echo "Updating Terraform to version ${TERRAFORM_VERSION}..."
+                                        # Download and install Terraform
+                                        cd ${HOME}/bin
+                                        wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                        unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                                        rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                    fi
+                                else
+                                    echo "Installing Terraform ${TERRAFORM_VERSION}..."
+                                    # Download and install Terraform
+                                    cd ${HOME}/bin
+                                    wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                    unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                                    rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                fi
+
+                                # Add the bin directory to PATH
+                                echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
+                                source ${HOME}/.bashrc
+                            '''
+                        }
+                    }
+                }
+
+             stage('Initialize Terraform Providers') {
+                 steps {
+                     script {
+                         sh '''
+                             # Navigate to the Terraform directory
+                             cd terraform-repo/ibm-cloud
+
+                              # Initialize Terraform (this will download the required providers)
+                             terraform init
+                         '''
+                     }
+                 }
+             }
+
+         stage('Terraform Plan') {
+             steps {
+                script {
+                    sh '''
+                        # Navigate to the Terraform directory
+                        cd terraform-repo/ibm-cloud
+
+                        # Run terraform plan
+                        terraform plan
+                    '''
+                   }
+                 }
+               }
+             }
+
 
         stage('Fetch Resource Allocation') {
             steps {
@@ -73,8 +146,6 @@ pipeline {
         stage('Run Create Cluster Script') {
             steps {
                 script {
-
-                    // Execute the script with parameters
                     sh """
                     chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
                     ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
@@ -82,7 +153,6 @@ pipeline {
                 }
             }
         }
-    }
 
     post {
         success {

@@ -59,11 +59,6 @@ function main() {
   # Parse parameters
   parse_params "$@"
 
-  # Debugging: Print PATH and verify terraform is available
-  msg "Current PATH: ${PATH}"
-  which terraform || die "terraform command not found in PATH"
-  terraform --version || die "Failed to run terraform --version"
-
   # Clone or update the Terraform repository
   if [ -d "terraform-repo" ]; then
     msg "Updating existing Terraform repository..."

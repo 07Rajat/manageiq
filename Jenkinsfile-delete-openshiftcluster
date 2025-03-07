@@ -13,15 +13,6 @@ pipeline {
                         checkout scm
                     }
                 }
-
-                stage('Debug Workspace') {
-                    steps {
-                        sh '''
-                            echo "Current directory: $(pwd)"
-                            ls -lR
-                        '''
-                      }
-                   }
     
                 stage('Install Terraform') {
                     steps {
@@ -85,19 +76,6 @@ pipeline {
                 }
             }
 
-            stage('Debug PATH') {
-                steps {
-                    script {
-                        withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
-                            sh '''
-                                echo "PATH: ${PATH}"
-                                which terraform
-                                terraform --version
-                            '''
-                        }
-                    }
-                }
-            }
 
             stage('Run Delete Cluster Script') {
                 steps {
