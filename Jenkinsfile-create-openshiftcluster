@@ -290,7 +290,6 @@ pipeline {
         stage('Initialize Terraform Providers') {
             steps {
                 script {
-                    withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
                         sh '''
                             # Navigate to the Terraform directory
                             cd terraform-repo/ibm-cloud
@@ -298,7 +297,6 @@ pipeline {
                             # Initialize Terraform (this will download the required providers)
                             terraform init
                         '''
-                    }
                 }
             }
         }
