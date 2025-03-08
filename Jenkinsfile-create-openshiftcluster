@@ -188,6 +188,15 @@ pipeline {
             }
         }
 
+        stage('Debug Workspace') {
+            steps {
+                sh '''
+                    echo "Current directory: $(pwd)"
+                    ls -lR
+                '''
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 script {
@@ -226,12 +235,13 @@ pipeline {
                         error "Error: ${resourceData.error}"
                     }
                     
-                    def allocatedCPU = resourceData.allocated_cpu.toInteger()
-                    def allocatedMemory = resourceData.allocated_memory_gb.toInteger()
+                    // Store allocated resources in global variables
+                    env.ALLOCATED_CPU = resourceData.allocated_cpu.toInteger()
+                    env.ALLOCATED_MEMORY = resourceData.allocated_memory_gb.toInteger()
 
                     // Check if requested resources exceed allocated resources
-                    if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
-                        echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+                    if (requestedCPU > env.ALLOCATED_CPU || requestedMemory > env.ALLOCATED_MEMORY) {
+                        echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${env.ALLOCATED_CPU} CPU, ${env.ALLOCATED_MEMORY} GB RAM)"
                         echo "Please delete existing clusters to free up resources."
                         currentBuild.result = 'UNSTABLE'
                         return
@@ -290,13 +300,13 @@ pipeline {
         stage('Initialize Terraform Providers') {
             steps {
                 script {
-                        sh '''
-                            # Navigate to the Terraform directory
-                            cd terraform-repo/ibm-cloud
+                    sh '''
+                        # Navigate to the Terraform directory
+                        cd terraform-repo/ibm-cloud
 
-                            # Initialize Terraform (this will download the required providers)
-                            terraform init
-                        '''
+                        # Initialize Terraform (this will download the required providers)
+                        terraform init
+                    '''
                 }
             }
         }
@@ -311,8 +321,8 @@ pipeline {
                     // """
 
                     // Subtract the requested resources from the allocated resources
-                    def updatedCPU = allocatedCPU - requestedCPU
-                    def updatedMemory = allocatedMemory - requestedMemory
+                    def updatedCPU = env.ALLOCATED_CPU - params.REQUESTED_CPU.toInteger()
+                    def updatedMemory = env.ALLOCATED_MEMORY - params.REQUESTED_MEMORY.toInteger()
 
                     def updateCommand = """
                         . venv/bin/activate
