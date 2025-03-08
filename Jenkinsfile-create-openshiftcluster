@@ -231,6 +231,11 @@ pipeline {
 
                     def resourceData = readJSON(text: fetchOutput)
 
+                    // Debug JSON output
+                    echo "Resource Data: ${resourceData}"
+                    echo "Allocated CPU: ${resourceData.allocated_cpu}, Type: ${resourceData.allocated_cpu.getClass()}"
+                    echo "Allocated Memory: ${resourceData.allocated_memory_gb}, Type: ${resourceData.allocated_memory_gb.getClass()}"
+
                     if (resourceData.containsKey('error')) {
                         error "Error: ${resourceData.error}"
                     }
