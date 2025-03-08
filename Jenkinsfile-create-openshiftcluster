@@ -235,9 +235,20 @@ pipeline {
                         error "Error: ${resourceData.error}"
                     }
                     
-                    // Store allocated resources in global variables
-                    env.ALLOCATED_CPU = resourceData.allocated_cpu.toInteger()
-                    env.ALLOCATED_MEMORY = resourceData.allocated_memory_gb.toInteger()
+                    // Validate and convert allocated_cpu and allocated_memory_gb
+                    def allocatedCPU = resourceData.allocated_cpu
+                    def allocatedMemory = resourceData.allocated_memory_gb
+
+                    if (allocatedCPU == null || !allocatedCPU.toString().isNumber()) {
+                        error "Error: allocated_cpu is not a valid number."
+                    }
+                    if (allocatedMemory == null || !allocatedMemory.toString().isNumber()) {
+                        error "Error: allocated_memory_gb is not a valid number."
+                    }
+
+                    // Convert to integers
+                    env.ALLOCATED_CPU = allocatedCPU.toInteger()
+                    env.ALLOCATED_MEMORY = allocatedMemory.toInteger()
 
                     // Check if requested resources exceed allocated resources
                     if (requestedCPU > env.ALLOCATED_CPU || requestedMemory > env.ALLOCATED_MEMORY) {
