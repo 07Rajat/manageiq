@@ -1,3 +1,169 @@
+// pipeline {
+//     agent any
+
+//     environment {
+//         PATH = "${env.HOME}/bin:${env.PATH}" 
+//     }
+
+//     parameters {
+//         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
+//         string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
+//         string(name: 'TEAM_NAME', defaultValue: '', description: 'Enter the Team Name')
+//         string(name: 'DB_NAME', defaultValue: '', description: 'Enter the Database Name')
+//         string(name: 'MongoURL', defaultValue: '', description: 'Enter the Mongodb URL')
+//         string(name: 'REQUESTED_CPU', defaultValue: '', description: 'Requested CPU')
+//         string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
+//     }
+
+//     stages {
+
+//         stage('Install Dependencies') {
+//             steps {
+//                 script {
+//                     // Create a virtual environment
+//                     sh 'python3 -m venv venv'
+                    
+//                     // Activate the virtual environment and install pymongo
+//                     sh '''
+//                         python3 -m venv venv
+//                         . venv/bin/activate
+//                         pip install --upgrade pip
+//                         pip install "pymongo[srv]"
+//                     '''
+//                 }
+//             }
+//         }
+//         stage('Install Terraform') {
+//                     steps {
+//                         script {
+//                             sh '''
+//                                 # Set the Terraform version
+//                                 TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
+
+//                                 # Create a bin directory in the user's home directory
+//                                 mkdir -p ${HOME}/bin
+
+//                                 # Check if Terraform is already installed and is the correct version
+//                                 if [ -f "${HOME}/bin/terraform" ]; then
+//                                     CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
+//                                     if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
+//                                         echo "Terraform ${TERRAFORM_VERSION} is already installed."
+//                                     else
+//                                         echo "Updating Terraform to version ${TERRAFORM_VERSION}..."
+//                                         # Download and install Terraform
+//                                         cd ${HOME}/bin
+//                                         wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+//                                         unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+//                                         rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+//                                     fi
+//                                 else
+//                                     echo "Installing Terraform ${TERRAFORM_VERSION}..."
+//                                     # Download and install Terraform
+//                                     cd ${HOME}/bin
+//                                     wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+//                                     unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+//                                     rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+//                                 fi
+
+//                                 # Add the bin directory to PATH
+//                                 echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
+//                                 source ${HOME}/.bashrc
+//                             '''
+//                         }
+//                     }
+//                 }
+
+//              stage('Initialize Terraform Providers') {
+//                  steps {
+//                      script {
+//                          sh '''
+//                              # Navigate to the Terraform directory
+//                              cd terraform-repo/ibm-cloud
+
+//                               # Initialize Terraform (this will download the required providers)
+//                              terraform init
+//                          '''
+//                      }
+//                  }
+//              }
+
+//          stage('Terraform Plan') {
+//              steps {
+//                 script {
+//                     sh '''
+//                         # Navigate to the Terraform directory
+//                         cd terraform-repo/ibm-cloud
+
+//                         # Run terraform plan
+//                         terraform plan
+//                     '''
+//                    }
+//                  }
+//                }
+//              }
+
+
+//         stage('Fetch Resource Allocation') {
+//             steps {
+//                 script {
+//                     def teamName = params.TEAM_NAME
+//                     def requestedCPU = params.REQUESTED_CPU.toInteger()
+//                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
+                    
+//                     // Activate the virtual environment and run the Python script
+//                     def fetchCommand = """
+//                         . venv/bin/activate
+//                         python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'
+//                     """
+//                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
+                    
+//                     echo "Fetch output: ${fetchOutput}"
+
+//                     if (!fetchOutput?.trim()) {
+//                         error "Error: Fetch output is empty. Check if the script executed correctly."
+//                     }
+
+//                     // Parse JSON output from Python script
+//                     def resourceData = readJSON(text: fetchOutput)
+
+//                     if (resourceData.containsKey('error')) {
+//                         error "Error: ${resourceData.error}"
+//                     }
+                    
+//                     def allocatedCPU = resourceData.allocated_cpu.toInteger()
+//                     def allocatedMemory = resourceData.allocated_memory_gb.toInteger()
+
+//                     // Compare Requested vs Allocated
+//                     if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
+//                         error "Error: Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+//                     }
+
+//                     echo "Resources available. Proceeding with Terraform..."
+//                 }
+//             }
+//         }
+
+//         stage('Run Create Cluster Script') {
+//             steps {
+//                 script {
+//                     sh """
+//                     chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
+//                     ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+//                     """
+//                 }
+//             }
+//         }
+
+//     post {
+//         success {
+//             echo "Cluster creation completed successfully!"
+//         }
+//         failure {
+//             echo "Cluster creation failed. Check the logs for details."
+//         }
+//     }
+// }
+
 pipeline {
     agent any
 
@@ -16,16 +182,17 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
 
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Create a virtual environment
                     sh 'python3 -m venv venv'
-                    
-                    // Activate the virtual environment and install pymongo
                     sh '''
-                        python3 -m venv venv
                         . venv/bin/activate
                         pip install --upgrade pip
                         pip install "pymongo[srv]"
@@ -33,75 +200,6 @@ pipeline {
                 }
             }
         }
-        stage('Install Terraform') {
-                    steps {
-                        script {
-                            sh '''
-                                # Set the Terraform version
-                                TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
-
-                                # Create a bin directory in the user's home directory
-                                mkdir -p ${HOME}/bin
-
-                                # Check if Terraform is already installed and is the correct version
-                                if [ -f "${HOME}/bin/terraform" ]; then
-                                    CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
-                                    if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
-                                        echo "Terraform ${TERRAFORM_VERSION} is already installed."
-                                    else
-                                        echo "Updating Terraform to version ${TERRAFORM_VERSION}..."
-                                        # Download and install Terraform
-                                        cd ${HOME}/bin
-                                        wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                                        unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
-                                        rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                                    fi
-                                else
-                                    echo "Installing Terraform ${TERRAFORM_VERSION}..."
-                                    # Download and install Terraform
-                                    cd ${HOME}/bin
-                                    wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                                    unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
-                                    rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                                fi
-
-                                # Add the bin directory to PATH
-                                echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
-                                source ${HOME}/.bashrc
-                            '''
-                        }
-                    }
-                }
-
-             stage('Initialize Terraform Providers') {
-                 steps {
-                     script {
-                         sh '''
-                             # Navigate to the Terraform directory
-                             cd terraform-repo/ibm-cloud
-
-                              # Initialize Terraform (this will download the required providers)
-                             terraform init
-                         '''
-                     }
-                 }
-             }
-
-         stage('Terraform Plan') {
-             steps {
-                script {
-                    sh '''
-                        # Navigate to the Terraform directory
-                        cd terraform-repo/ibm-cloud
-
-                        # Run terraform plan
-                        terraform plan
-                    '''
-                   }
-                 }
-               }
-             }
-
 
         stage('Fetch Resource Allocation') {
             steps {
@@ -110,20 +208,18 @@ pipeline {
                     def requestedCPU = params.REQUESTED_CPU.toInteger()
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
                     
-                    // Activate the virtual environment and run the Python script
+                    // Fetch allocated resources
                     def fetchCommand = """
                         . venv/bin/activate
                         python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'
                     """
                     def fetchOutput = sh(script: fetchCommand, returnStdout: true).trim()
-                    
                     echo "Fetch output: ${fetchOutput}"
 
                     if (!fetchOutput?.trim()) {
                         error "Error: Fetch output is empty. Check if the script executed correctly."
                     }
 
-                    // Parse JSON output from Python script
                     def resourceData = readJSON(text: fetchOutput)
 
                     if (resourceData.containsKey('error')) {
@@ -133,9 +229,12 @@ pipeline {
                     def allocatedCPU = resourceData.allocated_cpu.toInteger()
                     def allocatedMemory = resourceData.allocated_memory_gb.toInteger()
 
-                    // Compare Requested vs Allocated
+                    // Check if requested resources exceed allocated resources
                     if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
-                        error "Error: Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+                        echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+                        echo "Please delete existing clusters to free up resources."
+                        currentBuild.result = 'UNSTABLE'
+                        return
                     }
 
                     echo "Resources available. Proceeding with Terraform..."
@@ -143,16 +242,98 @@ pipeline {
             }
         }
 
-        stage('Run Create Cluster Script') {
+        stage('Install Terraform') {
             steps {
                 script {
-                    sh """
-                    chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
-                    ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
-                    """
+                    sh '''
+                        # Set the Terraform version
+                        TERRAFORM_VERSION="1.5.0"  # Change this to the desired version
+
+                        # Create a bin directory in the user's home directory
+                        mkdir -p ${HOME}/bin
+
+                        # Check if Terraform is already installed and is the correct version
+                        if [ -f "${HOME}/bin/terraform" ]; then
+                            CURRENT_VERSION=$(${HOME}/bin/terraform --version | head -n 1 | cut -d ' ' -f 2 | cut -d 'v' -f 2)
+                            if [ "${CURRENT_VERSION}" == "${TERRAFORM_VERSION}" ]; then
+                                echo "Terraform ${TERRAFORM_VERSION} is already installed."
+                            else
+                                echo "Updating Terraform to version ${TERRAFORM_VERSION}..."
+                                # Download and install Terraform
+                                cd ${HOME}/bin
+                                wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                                unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                                rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                            fi
+                        else
+                            echo "Installing Terraform ${TERRAFORM_VERSION}..."
+                            # Download and install Terraform
+                            cd ${HOME}/bin
+                            wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                            unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip  # Force overwrite
+                            rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+                        fi
+
+                        # Add the bin directory to PATH
+                        echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
+                        source ${HOME}/.bashrc
+
+                        # Verify installation
+                        echo "PATH: ${PATH}"
+                        which terraform
+                        terraform --version
+                    '''
                 }
             }
         }
+
+        stage('Initialize Terraform Providers') {
+            steps {
+                script {
+                    withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
+                        sh '''
+                            # Navigate to the Terraform directory
+                            cd terraform-repo/ibm-cloud
+
+                            # Initialize Terraform (this will download the required providers)
+                            terraform init
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Run Create Cluster Script') {
+            steps {
+                script {
+                    // Run the create cluster script
+                    // sh """
+                    // chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
+                    // ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
+                    // """
+
+                    // Subtract the requested resources from the allocated resources
+                    def updatedCPU = allocatedCPU - requestedCPU
+                    def updatedMemory = allocatedMemory - requestedMemory
+
+                    def updateCommand = """
+                        . venv/bin/activate
+                        python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' update ${updatedCPU} ${updatedMemory}
+                    """
+                    def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
+                    echo "Update output: ${updateOutput}"
+
+                    // Check for errors
+                    def updateResult = readJSON(text: updateOutput)
+                    if (updateResult.containsKey('error')) {
+                        error "Error updating MongoDB: ${updateResult.error}"
+                    } else {
+                        echo "Successfully updated MongoDB: ${updateResult.success}"
+                    }
+                }
+            }
+        }
+    }
 
     post {
         success {
@@ -160,6 +341,9 @@ pipeline {
         }
         failure {
             echo "Cluster creation failed. Check the logs for details."
+        }
+        unstable {
+            echo "Requested resources exceed allocation. Please delete existing clusters to free up resources."
         }
     }
 }
