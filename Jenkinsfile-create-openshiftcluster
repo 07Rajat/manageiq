@@ -187,12 +187,12 @@ pipeline {
             steps {
                 // Check out the manageiq repository
                 dir('manageiq') {
-                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
+                    git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
                 }
 
                 // Check out the terraform-repo repository
                 dir('terraform-repo') {
-                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
+                    git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
                 }
             }
         }
