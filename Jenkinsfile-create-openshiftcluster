@@ -228,7 +228,7 @@ pipeline {
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
                     
                     // Install pymongo if not already installed    
-                    sh 'pip3 install --user pymongo'
+                    sh 'pip3 install --user pymongo[srv]'
 
                     // Fetch allocated resources using python3 directly
                     def fetchOutput = sh(
