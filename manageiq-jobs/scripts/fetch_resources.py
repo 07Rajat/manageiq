@@ -47,6 +47,10 @@
 import pymongo
 import sys
 import json
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_resources(db_name, team_name, mongodb_uri):
     try:
@@ -65,7 +69,7 @@ def fetch_resources(db_name, team_name, mongodb_uri):
             allocated_memory_gb = team_data.get("Allocated_Memory")
 
             if allocated_cpu is None or allocated_memory_gb is None:
-                return {"error": "Required fields missing in MongoDB document"}
+                return {"error": "Required fields (Allocated_CPU or Allocated_Memory) missing in MongoDB document"}
 
             # Ensure values are numeric
             allocated_cpu = int(allocated_cpu)
@@ -79,7 +83,12 @@ def fetch_resources(db_name, team_name, mongodb_uri):
             return {"error": f"No data found for {team_name} in the collection."}
 
     except Exception as e:
+        logging.error(f"Failed to fetch data from MongoDB: {str(e)}")
         return {"error": f"Failed to fetch data from MongoDB: {str(e)}"}
+    finally:
+        # Close the MongoDB connection
+        if 'client' in locals():
+            client.close()
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
