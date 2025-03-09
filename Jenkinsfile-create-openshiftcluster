@@ -187,24 +187,24 @@ pipeline {
             steps {
                 // Check out the manageiq repository
                 dir('manageiq') {
-                    git branch: 'master', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
+                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
                 }
 
                 // Check out the terraform-repo repository
                 dir('terraform-repo') {
-                    git branch: 'master', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
+                    git branch: 'rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
                 }
             }
         }
 
-        stage('Clean Workspace') {
-            steps {
-                sh '''
-                    echo "Cleaning up old files..."
-                    rm -rf venv
-                '''
-            }
-        }
+        // stage('Clean Workspace') {
+        //     steps {
+        //         sh '''
+        //             echo "Cleaning up old files..."
+        //             rm -rf venv
+        //         '''
+        //     }
+        // }
 
         stage('Install Python Dependencies') {
             steps {
@@ -215,17 +215,6 @@ pipeline {
                     // Add the user's Python packages to PATH
                     sh 'echo "export PATH=${PYTHON_PATH}:${PATH}" >> ${HOME}/.bashrc'
                     sh 'source ${HOME}/.bashrc'
-                }
-            }
-        }
-
-        stage('Verify Python Installation') {
-            steps {
-                script {
-                    sh '''
-                        python3 --version
-                        python3 -m pip list
-                    '''
                 }
             }
         }
