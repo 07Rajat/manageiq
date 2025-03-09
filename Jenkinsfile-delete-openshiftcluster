@@ -16,6 +16,15 @@ pipeline {
                         checkout scm
                     }
                 }
+
+                stage('Debug Workspace') {
+                    steps {
+                        sh '''
+                            echo "Current directory: $(pwd)"
+                            ls -lR
+                        '''
+                    }
+                }
     
                 stage('Install Terraform') {
                     steps {
