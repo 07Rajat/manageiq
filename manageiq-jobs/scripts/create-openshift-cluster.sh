@@ -71,7 +71,7 @@ function main() {
   fi
 
   # Navigate to the Terraform directory
-  cd terraform-repo/ibm-cloud || die "Failed to navigate to IBM Cloud Terraform directory"
+  cd ibm-cloud || die "Failed to navigate to IBM Cloud Terraform directory"
 
   # Initialize and apply Terraform
   msg "Executing Terraform for IBM Cloud..."
@@ -79,7 +79,7 @@ function main() {
 
   # Create Terraform resources
   msg "creating Terraform resources..."
-  terraform apply -auto-approve -var="ibm_api_key=${IBM_API_KEY}" || die "Terraform apply failed for IBM Cloud"
+  terraform apply -auto-approve -var="ibm_api_key=${IBM_API_KEY}" || die "Terraform create plan failed for IBM Cloud"
 
   msg "Terraform execution completed successfully!"
 }

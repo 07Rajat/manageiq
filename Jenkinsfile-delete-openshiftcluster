@@ -5,6 +5,9 @@ pipeline {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
         string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
     }
+    environment {
+        PATH = "${env.HOME}/bin:${env.PATH}" 
+    }
 
 
             stages {
@@ -62,8 +65,6 @@ pipeline {
              stage('Initialize Terraform Providers') {
                 steps {
                     script {
-                        // Set the PATH globally using withEnv
-                        withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
                             sh '''
                                 # Navigate to the Terraform directory
                                 cd terraform-repo/ibm-cloud
@@ -71,7 +72,6 @@ pipeline {
                                 # Initialize Terraform (this will download the required providers)
                                 terraform init
                             '''
-                        }
                     }
                 }
             }
@@ -80,13 +80,10 @@ pipeline {
             stage('Run Delete Cluster Script') {
                 steps {
                     script {
-                        // Set the PATH globally using withEnv
-                        withEnv(["PATH=${env.HOME}/bin:${env.PATH}"]) {
-                            sh """
-                            chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
-                            ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
-                            """
-                        }
+                            // sh """
+                            // chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
+                            // ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key '${params.IBM_API_KEY}' --repo-url '${params.REPO_URL}'
+                            // """
                     }
                 }
              }
