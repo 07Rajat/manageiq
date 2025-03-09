@@ -252,18 +252,22 @@ pipeline {
                     }
 
                     // Convert to integers
-                    env.ALLOCATED_CPU = allocatedCPU.toInteger()
-                    env.ALLOCATED_MEMORY = allocatedMemory.toInteger()
+                    allocatedCPU = allocatedCPU.toInteger()
+                    allocatedMemory = allocatedMemory.toInteger()
 
                     // Check if requested resources exceed allocated resources
-                    if (requestedCPU > env.ALLOCATED_CPU || requestedMemory > env.ALLOCATED_MEMORY) {
-                        echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${env.ALLOCATED_CPU} CPU, ${env.ALLOCATED_MEMORY} GB RAM)"
+                    if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
+                        echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
                         echo "Please delete existing clusters to free up resources."
                         currentBuild.result = 'UNSTABLE'
                         return
                     }
 
                     echo "Resources available. Proceeding with Terraform..."
+
+                    // Store allocated resources in env for later stages (if needed)
+                    env.ALLOCATED_CPU = allocatedCPU
+                    env.ALLOCATED_MEMORY = allocatedMemory
                 }
             }
         }
