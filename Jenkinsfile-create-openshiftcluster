@@ -309,6 +309,11 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "Current directory: $(pwd)"
+                        echo "Workspace: ${WORKSPACE}"
+                        ls -lR
+                        # Print the PATH for debugging
+                        echo "PATH: ${PATH}"
                         # Navigate to the Terraform directory
                         cd terraform-repo/ibm-cloud
 
