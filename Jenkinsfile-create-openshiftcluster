@@ -226,49 +226,52 @@ pipeline {
                     def teamName = params.TEAM_NAME
                     def requestedCPU = params.REQUESTED_CPU.toInteger()
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
-        
+                    
+                    // Install pymongo if not already installed    
+                    sh 'pip3 install --user pymongo'
+
                     // Fetch allocated resources using python3 directly
                     def fetchOutput = sh(
                         script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'",
                         returnStdout: true
                     ).trim()
-        
+
                     echo "Fetch output: ${fetchOutput}"
-        
+
                     // Check if fetchOutput is empty
                     if (!fetchOutput?.trim()) {
                         error "Error: Fetch output is empty. Check if the script executed correctly."
                     }
-        
+
                     // Parse JSON output
                     try {
                         def resourceData = readJSON(text: fetchOutput)
-        
+
                         // Debug JSON output
                         echo "Resource Data: ${resourceData}"
                         echo "Allocated CPU: ${resourceData.allocated_cpu}, Type: ${resourceData.allocated_cpu.getClass()}"
                         echo "Allocated Memory: ${resourceData.allocated_memory_gb}, Type: ${resourceData.allocated_memory_gb.getClass()}"
-        
+
                         // Check for errors in the response
                         if (resourceData.containsKey('error')) {
                             error "Error: ${resourceData.error}"
                         }
-        
+
                         // Validate and convert allocated_cpu and allocated_memory_gb
                         def allocatedCPU = resourceData.allocated_cpu
                         def allocatedMemory = resourceData.allocated_memory_gb
-        
+
                         if (allocatedCPU == null || !allocatedCPU.toString().isNumber()) {
                             error "Error: allocated_cpu is not a valid number."
                         }
                         if (allocatedMemory == null || !allocatedMemory.toString().isNumber()) {
                             error "Error: allocated_memory_gb is not a valid number."
                         }
-        
+
                         // Convert to integers
                         allocatedCPU = allocatedCPU.toInteger()
                         allocatedMemory = allocatedMemory.toInteger()
-        
+
                         // Check if requested resources exceed allocated resources
                         if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
                             echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
@@ -276,13 +279,13 @@ pipeline {
                             currentBuild.result = 'UNSTABLE'
                             return
                         }
-        
+
                         echo "Resources available. Proceeding with Terraform..."
-        
+
                         // Store allocated resources in env for later stages (if needed)
                         env.ALLOCATED_CPU = allocatedCPU
                         env.ALLOCATED_MEMORY = allocatedMemory
-        
+
                     } catch (Exception e) {
                         error "Error parsing JSON output: ${e.message}"
                     }
