@@ -184,7 +184,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'master', credentialsId: 'GHE-PAT', url: "${params.REPO_URL}"
             }
         }
 
@@ -226,7 +226,7 @@ pipeline {
                     def teamName = params.TEAM_NAME
                     def requestedCPU = params.REQUESTED_CPU.toInteger()
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
-                    
+
                     // Install pymongo if not already installed    
                     sh 'pip3 install --user pymongo[srv]'
 
@@ -345,17 +345,20 @@ pipeline {
                         echo "Current directory: $(pwd)"
                         echo "Workspace: ${WORKSPACE}"
                         ls -lR
-                        # Print the PATH for debugging
                         echo "PATH: ${PATH}"
-                        # Navigate to the Terraform directory
-                        cd terraform-repo/ibm-cloud
 
-                        # Initialize Terraform (this will download the required providers)
-                        terraform init
+                        # Check if the Terraform directory exists
+                        if [ -d "terraform-repo/ibm-cloud" ]; then
+                            cd terraform-repo/ibm-cloud
+                            terraform init
+                        else
+                            echo "Error: terraform-repo/ibm-cloud directory not found."
+                            exit 1
+                        fi
                     '''
-                }
-            }
-        }
+                    }
+                 }
+              }
 
         stage('Run Create Cluster Script') {
             steps {
