@@ -188,15 +188,6 @@ pipeline {
             }
         }
 
-        stage('Debug Workspace') {
-            steps {
-                sh '''
-                    echo "Current directory: $(pwd)"
-                    ls -lR
-                '''
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 script {
@@ -269,6 +260,15 @@ pipeline {
                     env.ALLOCATED_CPU = allocatedCPU
                     env.ALLOCATED_MEMORY = allocatedMemory
                 }
+            }
+        }
+
+        stage('Debug Workspace') {
+            steps {
+                sh '''
+                    echo "Current directory: $(pwd)"
+                    ls -lR
+                '''
             }
         }
 
