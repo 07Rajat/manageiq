@@ -167,10 +167,6 @@
 pipeline {
     agent any
 
-    environment {
-        PATH = "${env.HOME}/bin:${env.PATH}" 
-    }
-
     parameters {
         string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
         string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
@@ -181,6 +177,10 @@ pipeline {
         string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
     }
 
+    environment {
+        PATH = "${env.HOME}/bin:${env.PATH}" 
+    }
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -188,16 +188,13 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Debug Workspace') {
             steps {
-                script {
-                    sh 'python3 -m venv venv'
-                    sh '''
-                        . venv/bin/activate
-                        pip install --upgrade pip
-                        pip install "pymongo[srv]"
-                    '''
-                }
+                sh '''
+                    echo "Current directory: $(pwd)"
+                    echo "Workspace: ${WORKSPACE}"
+                    ls -lR
+                '''
             }
         }
 
@@ -260,15 +257,6 @@ pipeline {
                     env.ALLOCATED_CPU = allocatedCPU
                     env.ALLOCATED_MEMORY = allocatedMemory
                 }
-            }
-        }
-
-        stage('Debug Workspace') {
-            steps {
-                sh '''
-                    echo "Current directory: $(pwd)"
-                    ls -lR
-                '''
             }
         }
 
