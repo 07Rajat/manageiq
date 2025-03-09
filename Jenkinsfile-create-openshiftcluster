@@ -178,13 +178,22 @@ pipeline {
     }
 
     environment {
-        PATH = "${env.HOME}/bin:${env.PATH}" 
+        PATH = "${env.HOME}/bin:${env.PATH}"
+        PYTHON_PATH = "${env.HOME}/.local/bin" // Path for user-installed Python packages
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'master', credentialsId: 'GHE-PAT', url: "${params.REPO_URL}"
+                // Check out the manageiq repository
+                dir('manageiq') {
+                    git branch: 'master', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
+                }
+
+                // Check out the terraform-repo repository
+                dir('terraform-repo') {
+                    git branch: 'master', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
+                }
             }
         }
 
@@ -194,6 +203,19 @@ pipeline {
                     echo "Cleaning up old files..."
                     rm -rf venv
                 '''
+            }
+        }
+
+        stage('Install Python Dependencies') {
+            steps {
+                script {
+                    // Install pymongo globally for the current user
+                    sh 'pip3 install --user pymongo[srv]'
+
+                    // Add the user's Python packages to PATH
+                    sh 'echo "export PATH=${PYTHON_PATH}:${PATH}" >> ${HOME}/.bashrc'
+                    sh 'source ${HOME}/.bashrc'
+                }
             }
         }
 
@@ -207,8 +229,6 @@ pipeline {
                 }
             }
         }
-
-    
 
         stage('Debug Workspace') {
             steps {
@@ -227,67 +247,66 @@ pipeline {
                     def requestedCPU = params.REQUESTED_CPU.toInteger()
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
 
-                    // Install pymongo if not already installed    
-                    sh 'pip3 install --user pymongo[srv]'
+                    // Fetch allocated resources using python3 directly from the manageiq repository
+                    dir('manageiq') {
+                        def fetchOutput = sh(
+                            script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'",
+                            returnStdout: true
+                        ).trim()
 
-                    // Fetch allocated resources using python3 directly
-                    def fetchOutput = sh(
-                        script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'",
-                        returnStdout: true
-                    ).trim()
+                        echo "Fetch output: ${fetchOutput}"
 
-                    echo "Fetch output: ${fetchOutput}"
-
-                    // Check if fetchOutput is empty
-                    if (!fetchOutput?.trim()) {
-                        error "Error: Fetch output is empty. Check if the script executed correctly."
-                    }
-
-                    // Parse JSON output
-                    try {
-                        def resourceData = readJSON(text: fetchOutput)
-
-                        // Debug JSON output
-                        echo "Resource Data: ${resourceData}"
-                        echo "Allocated CPU: ${resourceData.allocated_cpu}, Type: ${resourceData.allocated_cpu.getClass()}"
-                        echo "Allocated Memory: ${resourceData.allocated_memory_gb}, Type: ${resourceData.allocated_memory_gb.getClass()}"
-
-                        // Check for errors in the response
-                        if (resourceData.containsKey('error')) {
-                            error "Error: ${resourceData.error}"
+                        // Check if fetchOutput is empty
+                        if (!fetchOutput?.trim()) {
+                            error "Error: Fetch output is empty. Check if the script executed correctly."
                         }
 
-                        // Validate and convert allocated_cpu and allocated_memory_gb
-                        def allocatedCPU = resourceData.allocated_cpu
-                        def allocatedMemory = resourceData.allocated_memory_gb
+                        // Parse JSON output
+                        try {
+                            def resourceData = readJSON(text: fetchOutput)
 
-                        if (allocatedCPU == null || !allocatedCPU.toString().isNumber()) {
-                            error "Error: allocated_cpu is not a valid number."
+                            // Debug JSON output
+                            echo "Resource Data: ${resourceData}"
+                            echo "Allocated CPU: ${resourceData.allocated_cpu}, Type: ${resourceData.allocated_cpu.getClass()}"
+                            echo "Allocated Memory: ${resourceData.allocated_memory_gb}, Type: ${resourceData.allocated_memory_gb.getClass()}"
+
+                            // Check for errors in the response
+                            if (resourceData.containsKey('error')) {
+                                error "Error: ${resourceData.error}"
+                            }
+
+                            // Validate and convert allocated_cpu and allocated_memory_gb
+                            def allocatedCPU = resourceData.allocated_cpu
+                            def allocatedMemory = resourceData.allocated_memory_gb
+
+                            if (allocatedCPU == null || !allocatedCPU.toString().isNumber()) {
+                                error "Error: allocated_cpu is not a valid number."
+                            }
+                            if (allocatedMemory == null || !allocatedMemory.toString().isNumber()) {
+                                error "Error: allocated_memory_gb is not a valid number."
+                            }
+
+                            // Convert to integers
+                            allocatedCPU = allocatedCPU.toInteger()
+                            allocatedMemory = allocatedMemory.toInteger()
+
+                            // Check if requested resources exceed allocated resources
+                            if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
+                                echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
+                                echo "Please delete existing clusters to free up resources."
+                                currentBuild.result = 'UNSTABLE'
+                                return
+                            }
+
+                            echo "Resources available. Proceeding with Terraform..."
+
+                            // Store allocated resources in env for later stages (if needed)
+                            env.ALLOCATED_CPU = allocatedCPU
+                            env.ALLOCATED_MEMORY = allocatedMemory
+
+                        } catch (Exception e) {
+                            error "Error parsing JSON output: ${e.message}"
                         }
-                        if (allocatedMemory == null || !allocatedMemory.toString().isNumber()) {
-                            error "Error: allocated_memory_gb is not a valid number."
-                        }
-
-                        // Convert to integers
-                        allocatedCPU = allocatedCPU.toInteger()
-                        allocatedMemory = allocatedMemory.toInteger()
-
-                        // Check if requested resources exceed allocated resources
-                        if (requestedCPU > allocatedCPU || requestedMemory > allocatedMemory) {
-                            echo "Requested resources exceed allocation! (Requested: ${requestedCPU} CPU, ${requestedMemory} GB RAM, Available: ${allocatedCPU} CPU, ${allocatedMemory} GB RAM)"
-                            echo "Please delete existing clusters to free up resources."
-                            currentBuild.result = 'UNSTABLE'
-                            return
-                        }
-
-                        echo "Resources available. Proceeding with Terraform..."
-
-                        // Store allocated resources in env for later stages (if needed)
-                        env.ALLOCATED_CPU = allocatedCPU
-                        env.ALLOCATED_MEMORY = allocatedMemory
-
-                    } catch (Exception e) {
-                        error "Error parsing JSON output: ${e.message}"
                     }
                 }
             }
@@ -341,51 +360,44 @@ pipeline {
         stage('Initialize Terraform Providers') {
             steps {
                 script {
-                    sh '''
-                        echo "Current directory: $(pwd)"
-                        echo "Workspace: ${WORKSPACE}"
-                        ls -lR
-                        echo "PATH: ${PATH}"
+                    // Navigate to the terraform-repo directory and initialize Terraform
+                    dir('terraform-repo/ibm-cloud') {
+                        sh '''
+                            echo "Current directory: $(pwd)"
+                            echo "Workspace: ${WORKSPACE}"
+                            ls -lR
+                            echo "PATH: ${PATH}"
 
-                        # Check if the Terraform directory exists
-                        if [ -d "terraform-repo/ibm-cloud" ]; then
-                            cd terraform-repo/ibm-cloud
+                            # Initialize Terraform
                             terraform init
-                        else
-                            echo "Error: terraform-repo/ibm-cloud directory not found."
-                            exit 1
-                        fi
-                    '''
+                        '''
                     }
-                 }
-              }
+                }
+            }
+        }
 
         stage('Run Create Cluster Script') {
             steps {
                 script {
-                    // Run the create cluster script
-                    // sh """
-                    // chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
-                    // ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${IBM_API_KEY} --repo-url ${REPO_URL}
-                    // """
-
                     // Subtract the requested resources from the allocated resources
                     def updatedCPU = env.ALLOCATED_CPU - params.REQUESTED_CPU.toInteger()
                     def updatedMemory = env.ALLOCATED_MEMORY - params.REQUESTED_MEMORY.toInteger()
 
-                    def updateCommand = """
-                        . venv/bin/activate
-                        python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' update ${updatedCPU} ${updatedMemory}
-                    """
-                    def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
-                    echo "Update output: ${updateOutput}"
+                    // Update MongoDB with the new resource allocation
+                    dir('manageiq') {
+                        def updateCommand = """
+                            python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' update ${updatedCPU} ${updatedMemory}
+                        """
+                        def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
+                        echo "Update output: ${updateOutput}"
 
-                    // Check for errors
-                    def updateResult = readJSON(text: updateOutput)
-                    if (updateResult.containsKey('error')) {
-                        error "Error updating MongoDB: ${updateResult.error}"
-                    } else {
-                        echo "Successfully updated MongoDB: ${updateResult.success}"
+                        // Check for errors
+                        def updateResult = readJSON(text: updateOutput)
+                        if (updateResult.containsKey('error')) {
+                            error "Error updating MongoDB: ${updateResult.error}"
+                        } else {
+                            echo "Successfully updated MongoDB: ${updateResult.success}"
+                        }
                     }
                 }
             }
