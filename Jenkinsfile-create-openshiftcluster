@@ -222,8 +222,8 @@ pipeline {
                         else
                             git remote add origin https://github.com/07Rajat/terraform-repo.git
                         fi
-                        git fetch origin rn_clustercreation
-                        git checkout -B rn_clustercreation origin/rn_clustercreation
+                        git fetch origin master
+                        git checkout -B master origin/master
                     '''
                    }
                  }
