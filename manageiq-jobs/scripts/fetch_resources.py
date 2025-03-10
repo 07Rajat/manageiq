@@ -48,6 +48,7 @@ import pymongo
 import sys
 import json
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -75,12 +76,18 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
             allocated_cpu = int(allocated_cpu)
             allocated_memory_gb = int(allocated_memory_gb)
 
-            # If action is "update", update values
+            # If action is "update", append new values
             if action == "update" and cpu and memory:
-                logging.info(f"Updating CPU to {cpu} and Memory to {memory}GB")
-                result = collection.update_one({}, {"$set": {"Allocated_CPU": int(cpu), "Allocated_Memory": int(memory)}})
+                logging.info(f"Appending CPU to {cpu} and Memory to {memory}GB")
+                timestamp = datetime.now().isoformat()
+                update_data = {
+                    "timestamp": timestamp,
+                    "Allocated_CPU": int(cpu),
+                    "Allocated_Memory": int(memory)
+                }
+                result = collection.update_one({}, {"$push": {"updates": update_data}})
                 logging.info(f"Update result: {result.raw_result}")
-                return {"message": f"Updated CPU to {cpu} and Memory to {memory}GB"}
+                return {"message": f"Appended CPU to {cpu} and Memory to {memory}GB"}
 
             return {
                 "allocated_cpu": allocated_cpu,
