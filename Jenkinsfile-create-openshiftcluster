@@ -198,37 +198,37 @@ pipeline {
     //     }
 
     stages {
-    stage('Checkout Code') {
-        steps {
-            script {
-                dir('manageiq') {
-                    sh '''
-                        git init
-                        if git remote | grep -q origin; then
-                            git remote set-url origin https://github.com/07Rajat/manageiq.git
-                        else
-                            git remote add origin https://github.com/07Rajat/manageiq.git
-                        fi
-                        git fetch origin rn_clustercreation
-                        git checkout -B rn_clustercreation origin/rn_clustercreation
-                    '''
-                }
-                
-                dir('terraform-repo') {
-                    sh '''
-                        git init
-                        if git remote | grep -q origin; then
-                            git remote set-url origin https://github.com/07Rajat/terraform-repo.git
-                        else
-                            git remote add origin https://github.com/07Rajat/terraform-repo.git
-                        fi
-                        git fetch origin master
-                        git checkout -B master origin/master
-                    '''
+        stage('Checkout Code') {
+            steps {
+                script {
+                    dir('manageiq') {
+                        sh '''
+                            git init
+                            if git remote | grep -q origin; then
+                                git remote set-url origin https://github.com/07Rajat/manageiq.git
+                            else
+                                git remote add origin https://github.com/07Rajat/manageiq.git
+                            fi
+                            git fetch origin rn_clustercreation
+                            git checkout -B rn_clustercreation origin/rn_clustercreation
+                        '''
+                    }
+
+                    dir('terraform-repo') {
+                        sh '''
+                            git init
+                            if git remote | grep -q origin; then
+                                git remote set-url origin https://github.com/07Rajat/terraform-repo.git
+                            else
+                                git remote add origin https://github.com/07Rajat/terraform-repo.git
+                            fi
+                            git fetch origin master
+                            git checkout -B master origin/master
+                        '''
+                       }
+                     }
                    }
                  }
-               }
-             }
 
 
         // stage('Clean Workspace') {
@@ -250,16 +250,6 @@ pipeline {
                     sh 'echo "export PATH=${PYTHON_PATH}:${PATH}" >> ${HOME}/.bashrc'
                     sh 'source ${HOME}/.bashrc'
                 }
-            }
-        }
-
-        stage('Debug Workspace') {
-            steps {
-                sh '''
-                    echo "Current directory: $(pwd)"
-                    echo "Workspace: ${WORKSPACE}"
-                    ls -lR
-                '''
             }
         }
 
@@ -405,7 +395,7 @@ pipeline {
                     // Subtract requested resources
                     def updatedCPU = env.ALLOCATED_CPU.toInteger() - params.REQUESTED_CPU.toInteger()
                     def updatedMemory = env.ALLOCATED_MEMORY.toInteger() - params.REQUESTED_MEMORY.toInteger()
-        
+
                     // Update MongoDB
                     dir('manageiq') {
                         def updateCommand = """
@@ -413,7 +403,7 @@ pipeline {
                         """
                         def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
                         echo "Update output: ${updateOutput}"
-        
+
                         def updateResult = readJSON(text: updateOutput)
                         if (updateResult.containsKey('error')) {
                             error "Error updating MongoDB: ${updateResult.error}"
@@ -421,32 +411,32 @@ pipeline {
                             echo "Successfully updated MongoDB: ${updateResult.message}"
                         }
                     }
-        
+
                     // ✅ Fetch updated values after update
                     dir('manageiq') {
                         def fetchUpdatedOutput = sh(
                             script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}'",
                             returnStdout: true
                         ).trim()
-        
+
                         echo "Fetch updated output: ${fetchUpdatedOutput}"
-        
+
                         def updatedResourceData = readJSON(text: fetchUpdatedOutput)
-        
+
                         if (updatedResourceData.containsKey('error')) {
                             error "Error fetching updated resources: ${updatedResourceData.error}"
                         }
-        
+
                         // Store updated values in env for later use
                         env.ALLOCATED_CPU = updatedResourceData.allocated_cpu
                         env.ALLOCATED_MEMORY = updatedResourceData.allocated_memory_gb
-        
+
                         echo "Updated Allocated CPU: ${env.ALLOCATED_CPU}, Updated Allocated Memory: ${env.ALLOCATED_MEMORY}"
                     }
                 }
             }
         }
-
+    }
 
     post {
         success {
@@ -459,4 +449,3 @@ pipeline {
             echo "Requested resources exceed allocation. Please delete existing clusters to free up resources."
         }
     }
-}
