@@ -182,17 +182,42 @@ pipeline {
         PYTHON_PATH = "${env.HOME}/.local/bin" // Path for user-installed Python packages
     }
 
+    // stages {
+    //     stage('Checkout Code') {
+    //         steps {
+    //             // Check out the manageiq repository
+    //             dir('manageiq') {
+    //                 git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
+    //             }
+
+    //             // Check out the terraform-repo repository
+    //             dir('terraform-repo') {
+    //                 git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
+    //             }
+    //         }
+    //     }
+
     stages {
         stage('Checkout Code') {
             steps {
-                // Check out the manageiq repository
-                dir('manageiq') {
-                    git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/manageiq.git'
-                }
+                script {
+                    dir('manageiq') {
+                        sh '''
+                            git init
+                            git remote add origin https://github.com/07Rajat/manageiq.git
+                            git fetch origin rn_clustercreation
+                            git checkout -b rn_clustercreation origin/rn_clustercreation
+                        '''
+                    }
 
-                // Check out the terraform-repo repository
-                dir('terraform-repo') {
-                    git branch: 'refs/remotes/origin/rn_clustercreation', credentialsId: 'GHE-PAT', url: 'https://github.com/07Rajat/terraform-repo.git'
+                    dir('terraform-repo') {
+                        sh '''
+                            git init
+                            git remote add origin https://github.com/07Rajat/terraform-repo.git
+                            git fetch origin rn_clustercreation
+                            git checkout -b rn_clustercreation origin/rn_clustercreation
+                        '''
+                    }
                 }
             }
         }
