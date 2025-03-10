@@ -436,6 +436,14 @@ pipeline {
                             error "Unexpected response from fetch_resources.py: ${updateOutput}"
                         }
                     }
+        
+                    // Call the create-openshift-cluster.sh script
+                    // dir('manageiq') {
+                    //     sh """
+                    //         chmod +x ./manageiq-jobs/scripts/create-openshift-cluster.sh
+                    //         ./manageiq-jobs/scripts/create-openshift-cluster.sh --ibm-api-key ${params.IBM_API_KEY} --repo-url ${params.REPO_URL}
+                    //     """
+                    // }
                 }
             }
         }
