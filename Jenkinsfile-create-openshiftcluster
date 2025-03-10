@@ -402,30 +402,51 @@ pipeline {
         stage('Run Create Cluster Script') {
             steps {
                 script {
-                    // Subtract the requested resources from the allocated resources
-                    def updatedCPU = env.ALLOCATED_CPU - params.REQUESTED_CPU.toInteger()
-                    def updatedMemory = env.ALLOCATED_MEMORY - params.REQUESTED_MEMORY.toInteger()
-
-                    // Update MongoDB with the new resource allocation
+                    // Subtract requested resources
+                    def updatedCPU = env.ALLOCATED_CPU.toInteger() - params.REQUESTED_CPU.toInteger()
+                    def updatedMemory = env.ALLOCATED_MEMORY.toInteger() - params.REQUESTED_MEMORY.toInteger()
+        
+                    // Update MongoDB
                     dir('manageiq') {
                         def updateCommand = """
                             python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' update ${updatedCPU} ${updatedMemory}
                         """
                         def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
                         echo "Update output: ${updateOutput}"
-
-                        // Check for errors
+        
                         def updateResult = readJSON(text: updateOutput)
                         if (updateResult.containsKey('error')) {
                             error "Error updating MongoDB: ${updateResult.error}"
                         } else {
-                            echo "Successfully updated MongoDB: ${updateResult.success}"
+                            echo "Successfully updated MongoDB: ${updateResult.message}"
                         }
+                    }
+        
+                    // ✅ Fetch updated values after update
+                    dir('manageiq') {
+                        def fetchUpdatedOutput = sh(
+                            script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}'",
+                            returnStdout: true
+                        ).trim()
+        
+                        echo "Fetch updated output: ${fetchUpdatedOutput}"
+        
+                        def updatedResourceData = readJSON(text: fetchUpdatedOutput)
+        
+                        if (updatedResourceData.containsKey('error')) {
+                            error "Error fetching updated resources: ${updatedResourceData.error}"
+                        }
+        
+                        // Store updated values in env for later use
+                        env.ALLOCATED_CPU = updatedResourceData.allocated_cpu
+                        env.ALLOCATED_MEMORY = updatedResourceData.allocated_memory_gb
+        
+                        echo "Updated Allocated CPU: ${env.ALLOCATED_CPU}, Updated Allocated Memory: ${env.ALLOCATED_MEMORY}"
                     }
                 }
             }
         }
-    }
+
 
     post {
         success {
