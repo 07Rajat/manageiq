@@ -78,7 +78,8 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
             # If action is "update", update values
             if action == "update" and cpu and memory:
                 logging.info(f"Updating CPU to {cpu} and Memory to {memory}GB")
-                collection.update_one({}, {"$set": {"Allocated_CPU": int(cpu), "Allocated_Memory": int(memory)}})
+                result = collection.update_one({}, {"$set": {"Allocated_CPU": int(cpu), "Allocated_Memory": int(memory)}})
+                logging.info(f"Update result: {result.raw_result}")
                 return {"message": f"Updated CPU to {cpu} and Memory to {memory}GB"}
 
             return {

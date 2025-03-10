@@ -397,7 +397,11 @@ pipeline {
                     def updatedMemory = env.ALLOCATED_MEMORY - params.REQUESTED_MEMORY.toInteger()
         
                     // Debugging: Print the updated values
+                    echo "ALLOCATED_CPU: ${env.ALLOCATED_CPU}"
+                    echo "REQUESTED_CPU: ${params.REQUESTED_CPU}"
                     echo "Updated CPU: ${updatedCPU}"
+                    echo "ALLOCATED_MEMORY: ${env.ALLOCATED_MEMORY}"
+                    echo "REQUESTED_MEMORY: ${params.REQUESTED_MEMORY}"
                     echo "Updated Memory: ${updatedMemory}"
         
                     // Update MongoDB with the new resource allocation
