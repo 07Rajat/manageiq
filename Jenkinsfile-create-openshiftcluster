@@ -392,16 +392,30 @@ pipeline {
         stage('Run Create Cluster Script') {
             steps {
                 script {
+                    // Debugging: Print the data types
+                    echo "ALLOCATED_CPU type: ${env.ALLOCATED_CPU.getClass()}"
+                    echo "REQUESTED_CPU type: ${params.REQUESTED_CPU.getClass()}"
+                    echo "ALLOCATED_MEMORY type: ${env.ALLOCATED_MEMORY.getClass()}"
+                    echo "REQUESTED_MEMORY type: ${params.REQUESTED_MEMORY.getClass()}"
+        
+                    // Convert to integers if necessary
+                    def allocatedCPU = env.ALLOCATED_CPU.toInteger()
+                    def requestedCPU = params.REQUESTED_CPU.toInteger()
+                    def allocatedMemory = env.ALLOCATED_MEMORY.toInteger()
+                    def requestedMemory = params.REQUESTED_MEMORY.toInteger()
+        
+                    // Debugging: Print the converted values
+                    echo "ALLOCATED_CPU (converted): ${allocatedCPU}"
+                    echo "REQUESTED_CPU (converted): ${requestedCPU}"
+                    echo "ALLOCATED_MEMORY (converted): ${allocatedMemory}"
+                    echo "REQUESTED_MEMORY (converted): ${requestedMemory}"
+        
                     // Subtract the requested resources from the allocated resources
-                    def updatedCPU = env.ALLOCATED_CPU - params.REQUESTED_CPU.toInteger()
-                    def updatedMemory = env.ALLOCATED_MEMORY - params.REQUESTED_MEMORY.toInteger()
+                    def updatedCPU = allocatedCPU - requestedCPU
+                    def updatedMemory = allocatedMemory - requestedMemory
         
                     // Debugging: Print the updated values
-                    echo "ALLOCATED_CPU: ${env.ALLOCATED_CPU}"
-                    echo "REQUESTED_CPU: ${params.REQUESTED_CPU}"
                     echo "Updated CPU: ${updatedCPU}"
-                    echo "ALLOCATED_MEMORY: ${env.ALLOCATED_MEMORY}"
-                    echo "REQUESTED_MEMORY: ${params.REQUESTED_MEMORY}"
                     echo "Updated Memory: ${updatedMemory}"
         
                     // Update MongoDB with the new resource allocation
