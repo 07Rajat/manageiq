@@ -76,19 +76,25 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
             allocated_cpu = int(allocated_cpu)
             allocated_memory_gb = int(allocated_memory_gb)
 
-            # If action is "update", append new values
-            if action == "update" and cpu and memory:
-                logging.info(f"Appending CPU to {cpu} and Memory to {memory}GB")
-                timestamp = datetime.now().isoformat()
-                update_data = {
-                    "timestamp": timestamp,
-                    "Allocated_CPU": int(cpu),
-                    "Allocated_Memory": int(memory)
-                }
-                result = collection.update_one({}, {"$push": {"updates": update_data}})
+            # If action is "create", subtract resources
+            if action == "create" and cpu and memory:
+                logging.info(f"Subtracting CPU {cpu} and Memory {memory}GB")
+                new_cpu = allocated_cpu - int(cpu)
+                new_memory = allocated_memory_gb - int(memory)
+                result = collection.update_one({}, {"$set": {"Allocated_CPU": new_cpu, "Allocated_Memory": new_memory}})
                 logging.info(f"Update result: {result.raw_result}")
-                return {"message": f"Appended CPU to {cpu} and Memory to {memory}GB"}
+                return {"message": f"Subtracted CPU {cpu} and Memory {memory}GB. New values: CPU={new_cpu}, Memory={new_memory}GB"}
 
+            # If action is "delete", add back resources
+            if action == "delete" and cpu and memory:
+                logging.info(f"Adding back CPU {cpu} and Memory {memory}GB")
+                new_cpu = allocated_cpu + int(cpu)
+                new_memory = allocated_memory_gb + int(memory)
+                result = collection.update_one({}, {"$set": {"Allocated_CPU": new_cpu, "Allocated_Memory": new_memory}})
+                logging.info(f"Update result: {result.raw_result}")
+                return {"message": f"Added back CPU {cpu} and Memory {memory}GB. New values: CPU={new_cpu}, Memory={new_memory}GB"}
+
+            # If no action, return current allocated resources
             return {
                 "allocated_cpu": allocated_cpu,
                 "allocated_memory_gb": allocated_memory_gb
@@ -106,14 +112,14 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print(json.dumps({"error": "Usage: python3 fetch_resources.py <db_name> <team_name> <mongodb_uri> [update <cpu> <memory>]"}))
+        print(json.dumps({"error": "Usage: python3 fetch_resources.py <db_name> <team_name> <mongodb_uri> [create|delete <cpu> <memory>]"}))
         sys.exit(1)
 
     db_name = sys.argv[1]
     team_name = sys.argv[2]
     mongodb_uri = sys.argv[3]
 
-    # Optional update parameters
+    # Optional create/delete parameters
     action = sys.argv[4] if len(sys.argv) > 4 else None
     cpu = sys.argv[5] if len(sys.argv) > 5 else None
     memory = sys.argv[6] if len(sys.argv) > 6 else None

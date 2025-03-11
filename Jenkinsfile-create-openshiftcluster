@@ -197,6 +197,24 @@ pipeline {
     //         }
     //     }
 
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
+        string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
+        string(name: 'TEAM_NAME', defaultValue: '', description: 'Enter the Team Name')
+        string(name: 'DB_NAME', defaultValue: '', description: 'Enter the Database Name')
+        string(name: 'MongoURL', defaultValue: '', description: 'Enter the MongoDB URL')
+        string(name: 'REQUESTED_CPU', defaultValue: '', description: 'Requested CPU')
+        string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
+    }
+
+    environment {
+        PATH = "${env.HOME}/bin:${env.PATH}"
+        PYTHON_PATH = "${env.HOME}/.local/bin" // Path for user-installed Python packages
+    }
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -225,20 +243,10 @@ pipeline {
                             git fetch origin master
                             git checkout -B master origin/master
                         '''
-                       }
-                     }
-                   }
-                 }
-
-
-        // stage('Clean Workspace') {
-        //     steps {
-        //         sh '''
-        //             echo "Cleaning up old files..."
-        //             rm -rf venv
-        //         '''
-        //     }
-        // }
+                    }
+                }
+            }
+        }
 
         stage('Install Python Dependencies') {
             steps {
@@ -360,11 +368,6 @@ pipeline {
                         # Add the bin directory to PATH
                         echo 'export PATH=${HOME}/bin:${PATH}' >> ${HOME}/.bashrc
                         source ${HOME}/.bashrc
-
-                        # Verify installation
-                        echo "PATH: ${PATH}"
-                        which terraform
-                        terraform --version
                     '''
                 }
             }
@@ -376,11 +379,6 @@ pipeline {
                     // Navigate to the terraform-repo directory and initialize Terraform
                     dir('terraform-repo/ibm-cloud') {
                         sh '''
-                            echo "Current directory: $(pwd)"
-                            echo "Workspace: ${WORKSPACE}"
-                            ls -lR
-                            echo "PATH: ${PATH}"
-
                             # Initialize Terraform
                             terraform init
                         '''
@@ -397,35 +395,35 @@ pipeline {
                     echo "REQUESTED_CPU type: ${params.REQUESTED_CPU.getClass()}"
                     echo "ALLOCATED_MEMORY type: ${env.ALLOCATED_MEMORY.getClass()}"
                     echo "REQUESTED_MEMORY type: ${params.REQUESTED_MEMORY.getClass()}"
-        
+
                     // Convert to integers if necessary
                     def allocatedCPU = env.ALLOCATED_CPU.toInteger()
                     def requestedCPU = params.REQUESTED_CPU.toInteger()
                     def allocatedMemory = env.ALLOCATED_MEMORY.toInteger()
                     def requestedMemory = params.REQUESTED_MEMORY.toInteger()
-        
+
                     // Debugging: Print the converted values
                     echo "ALLOCATED_CPU (converted): ${allocatedCPU}"
                     echo "REQUESTED_CPU (converted): ${requestedCPU}"
                     echo "ALLOCATED_MEMORY (converted): ${allocatedMemory}"
                     echo "REQUESTED_MEMORY (converted): ${requestedMemory}"
-        
+
                     // Subtract the requested resources from the allocated resources
                     def updatedCPU = allocatedCPU - requestedCPU
                     def updatedMemory = allocatedMemory - requestedMemory
-        
+
                     // Debugging: Print the updated values
                     echo "Updated CPU: ${updatedCPU}"
                     echo "Updated Memory: ${updatedMemory}"
-        
+
                     // Update MongoDB with the new resource allocation
                     dir('manageiq') {
                         def updateCommand = """
-                            python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' update ${updatedCPU} ${updatedMemory}
+                            python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' create ${requestedCPU} ${requestedMemory}
                         """
                         def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
                         echo "Update output: ${updateOutput}"
-        
+
                         // Check for errors
                         def updateResult = readJSON(text: updateOutput)
                         if (updateResult.containsKey('error')) {
@@ -436,7 +434,7 @@ pipeline {
                             error "Unexpected response from fetch_resources.py: ${updateOutput}"
                         }
                     }
-        
+
                     // Call the create-openshift-cluster.sh script
                     // dir('manageiq') {
                     //     sh """
@@ -460,5 +458,4 @@ pipeline {
             echo "Requested resources exceed allocation. Please delete existing clusters to free up resources."
         }
     }
-
 }
