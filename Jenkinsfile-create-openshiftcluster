@@ -164,24 +164,6 @@
 //     }
 // }
 
-pipeline {
-    agent any
-
-    parameters {
-        string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
-        string(name: 'REPO_URL', defaultValue: '', description: 'Git repository URL for Terraform code')
-        string(name: 'TEAM_NAME', defaultValue: '', description: 'Enter the Team Name')
-        string(name: 'DB_NAME', defaultValue: '', description: 'Enter the Database Name')
-        string(name: 'MongoURL', defaultValue: '', description: 'Enter the Mongodb URL')
-        string(name: 'REQUESTED_CPU', defaultValue: '', description: 'Requested CPU')
-        string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
-    }
-
-    environment {
-        PATH = "${env.HOME}/bin:${env.PATH}"
-        PYTHON_PATH = "${env.HOME}/.local/bin" // Path for user-installed Python packages
-    }
-
     // stages {
     //     stage('Checkout Code') {
     //         steps {
@@ -456,6 +438,6 @@ pipeline {
         }
         unstable {
             echo "Requested resources exceed allocation. Please delete existing clusters to free up resources."
-        }
-    }
-}
+         }
+      }
+   }
