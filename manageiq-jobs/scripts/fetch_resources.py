@@ -66,23 +66,44 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
         team_data = collection.find_one({})
 
         if team_data:
-            allocated_cpu = team_data.get("Allocated_CPU")
-            allocated_memory_gb = team_data.get("Allocated_Memory")
-
-            if allocated_cpu is None or allocated_memory_gb is None:
-                return {"error": "Required fields (Allocated_CPU or Allocated_Memory) missing in MongoDB document"}
+            allocated_cpu = team_data.get("Allocated_CPU", 0)
+            allocated_memory_gb = team_data.get("Allocated_Memory", 0)
 
             # Ensure values are numeric
             allocated_cpu = int(allocated_cpu)
             allocated_memory_gb = int(allocated_memory_gb)
+
+            # Fetch existing updates array or initialize if not present
+            updates = team_data.get("updates", [])
+
+            # Prepare update document
+            update_entry = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "action": action,
+                "Allocated_CPU": None,  # Will be set dynamically
+                "Allocated_Memory": None  # Will be set dynamically
+            }
 
             # If action is "create", subtract resources
             if action == "create" and cpu and memory:
                 logging.info(f"Subtracting CPU {cpu} and Memory {memory}GB")
                 new_cpu = allocated_cpu - int(cpu)
                 new_memory = allocated_memory_gb - int(memory)
-                result = collection.update_one({}, {"$set": {"Allocated_CPU": new_cpu, "Allocated_Memory": new_memory}})
+
+                # Add the updated values to update_entry
+                update_entry["Allocated_CPU"] = new_cpu
+                update_entry["Allocated_Memory"] = new_memory
+
+                # Update MongoDB document
+                result = collection.update_one({}, {
+                    "$set": {
+                        "Allocated_CPU": new_cpu,
+                        "Allocated_Memory": new_memory
+                    },
+                    "$push": {"updates": update_entry}  # Append to updates array
+                })
                 logging.info(f"Update result: {result.raw_result}")
+
                 return {"message": f"Subtracted CPU {cpu} and Memory {memory}GB. New values: CPU={new_cpu}, Memory={new_memory}GB"}
 
             # If action is "delete", add back resources
@@ -90,8 +111,21 @@ def fetch_resources(db_name, team_name, mongodb_uri, action=None, cpu=None, memo
                 logging.info(f"Adding back CPU {cpu} and Memory {memory}GB")
                 new_cpu = allocated_cpu + int(cpu)
                 new_memory = allocated_memory_gb + int(memory)
-                result = collection.update_one({}, {"$set": {"Allocated_CPU": new_cpu, "Allocated_Memory": new_memory}})
+
+                # Add the updated values to update_entry
+                update_entry["Allocated_CPU"] = new_cpu
+                update_entry["Allocated_Memory"] = new_memory
+
+                # Update MongoDB document
+                result = collection.update_one({}, {
+                    "$set": {
+                        "Allocated_CPU": new_cpu,
+                        "Allocated_Memory": new_memory
+                    },
+                    "$push": {"updates": update_entry}  # Append to updates array
+                })
                 logging.info(f"Update result: {result.raw_result}")
+
                 return {"message": f"Added back CPU {cpu} and Memory {memory}GB. New values: CPU={new_cpu}, Memory={new_memory}GB"}
 
             # If no action, return current allocated resources
