@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PATH = "${env.HOME}/bin:${env.PATH}"
-        PYTHON_PATH = "${env.HOME}/.local/bin" // Path for user-installed Python packages
+        PATH = "${env.WORKSPACE}/venv/bin:${env.PATH}" // Add virtual environment to PATH
     }
 
     parameters {
@@ -36,13 +35,13 @@ pipeline {
         stage('Install Python Dependencies') {
             steps {
                 script {
-                    echo "Installing Python dependencies..."
+                    echo "Creating and activating a Python virtual environment..."
                     sh """
-                    pip3 install --user pymongo[srv] openai matplotlib pandas
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install 'pymongo[srv]' openai matplotlib pandas
+                    echo "Python dependencies installed successfully."
                     """
-                    // Add the user's Python packages to PATH
-                    sh 'echo "export PATH=${PYTHON_PATH}:${PATH}" >> ${HOME}/.bashrc'
-                    sh 'source ${HOME}/.bashrc'
                 }
             }
         }
@@ -52,7 +51,8 @@ pipeline {
                 script {
                     echo "Generating reports..."
                     sh """
-                    python3 generate_report.py \
+                        . venv/bin/activate
+                        python3 generate_report.py \
                         --mongodb_uri "${params.MONGODB_URI}" \
                         --database "${params.DATABASE}" \
                         --collections "${params.COLLECTIONS}" \
@@ -69,23 +69,24 @@ pipeline {
                 script {
                     echo "Sending email with reports..."
                     sh """
-                    python3 send_email.py \
+                        . venv/bin/activate
+                        python3 send_email.py \
                         --email_from "${params.EMAIL_FROM}" \
                         --email_password "${params.EMAIL_PASSWORD}" \
                         --email_to "${params.EMAIL_TO}" \
                         --report_dir "${params.REPORT_DIR}"
                     """
-                }
-            }
-        }
-    }
+                    }
+                 }
+              }
+           }
 
-    post {
-        success {
-            echo "Reports generated and email sent successfully!"
-        }
-        failure {
-            echo "Failed to generate reports or send email. Check logs for errors."
-        }
-    }
+        post {
+            success {
+                echo "Reports generated and email sent successfully!"
+            }
+            failure {
+                echo "Failed to generate reports or send email. Check logs for errors."
+            }
+     }
 }
