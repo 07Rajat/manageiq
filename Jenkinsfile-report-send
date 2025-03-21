@@ -51,13 +51,24 @@ pipeline {
                             # Download prebuilt GCC binary from a trusted source
                             GCC_VERSION="12.2.0"  # Replace with the desired GCC version
                             GCC_ARCH="x86_64"     # Adjust for your system architecture
-                            GCC_URL="https://github.com/brechtsanders/gcc_ci/releases/download/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz"
-                            wget ${GCC_URL} -O gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz
-                            tar -xvzf gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz
+                            GCC_URL="https://mirrors.kernel.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz"
+                            wget ${GCC_URL} -O gcc-${GCC_VERSION}.tar.gz
+                            tar -xvzf gcc-${GCC_VERSION}.tar.gz
+                            cd gcc-${GCC_VERSION}
+        
+                            # Download prerequisites
+                            ./contrib/download_prerequisites
+        
+                            # Configure and build GCC
+                            mkdir build
+                            cd build
+                            ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++
+                            make -j$(nproc)
+                            make install
         
                             # Add GCC to PATH
-                            export PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu/bin:${PATH}
-                            export LD_LIBRARY_PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu/lib64:${LD_LIBRARY_PATH}
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+                            export LD_LIBRARY_PATH=${WORKSPACE}/local/lib64:${LD_LIBRARY_PATH}
         
                             # Verify GCC installation
                             gcc --version || { echo "GCC installation failed"; exit 1; }
