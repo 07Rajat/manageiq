@@ -40,6 +40,32 @@ pipeline {
                 script {
                     echo "Installing system dependencies locally..."
                     sh '''
+                        # Install CMake if not already installed
+                        if ! command -v cmake &> /dev/null; then
+                            echo "CMake not found. Installing CMake locally..."
+                            
+                            # Create a directory for CMake installation
+                            mkdir -p ${WORKSPACE}/local/cmake
+                            cd ${WORKSPACE}/local/cmake
+        
+                            # Download CMake source code
+                            CMAKE_VERSION="3.26.4"  # Replace with the desired CMake version
+                            wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
+                            tar -xvzf cmake-${CMAKE_VERSION}.tar.gz
+                            cd cmake-${CMAKE_VERSION}
+        
+                            # Build and install CMake locally
+                            ./bootstrap --prefix=${WORKSPACE}/local
+                            make
+                            make install
+        
+                            # Add CMake to PATH
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+        
+                            # Verify CMake installation
+                            cmake --version || { echo "CMake installation failed"; exit 1; }
+                        fi
+        
                         mkdir -p ${WORKSPACE}/local
                         cd ${WORKSPACE}
         
