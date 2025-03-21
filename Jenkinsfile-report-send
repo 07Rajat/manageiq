@@ -3,6 +3,9 @@ pipeline {
 
     environment {
         PATH = "${env.WORKSPACE}/venv/bin:${env.PATH}" // Add virtual environment to PATH
+        LD_LIBRARY_PATH = "${WORKSPACE}/local/lib:${env.LD_LIBRARY_PATH}"
+        CPATH = "${WORKSPACE}/local/include:${env.CPATH}"
+        LIBRARY_PATH = "${WORKSPACE}/local/lib:${env.LIBRARY_PATH}"
     }
 
     parameters {
@@ -32,15 +35,49 @@ pipeline {
             }
         }
 
+        stage('Install System Dependencies') {
+            steps {
+                script {
+                    echo "Installing system dependencies locally..."
+                    sh '''
+                        mkdir -p ${WORKSPACE}/local
+                        cd ${WORKSPACE}
+                        wget http://zlib.net/zlib-1.2.11.tar.gz
+                        tar -xvzf zlib-1.2.11.tar.gz
+                        cd zlib-1.2.11
+                        ./configure --prefix=${WORKSPACE}/local
+                        make
+                        make install
+
+                        wget https://downloads.sourceforge.net/libjpeg-turbo/libjpeg-turbo-2.1.3.tar.gz
+                        tar -xvzf libjpeg-turbo-2.1.3.tar.gz
+                        cd libjpeg-turbo-2.1.3
+                        ./configure --prefix=${WORKSPACE}/local
+                        make
+                        make install
+
+                        wget https://download.savannah.gnu.org/releases/freetype/freetype-2.11.0.tar.gz
+                        tar -xvzf freetype-2.11.0.tar.gz
+                        cd freetype-2.11.0
+                        ./configure --prefix=${WORKSPACE}/local
+                        make
+                        make install
+                    '''
+                }
+            }
+        }
+
         stage('Install Python Dependencies') {
             steps {
                 script {
                     echo "Creating and activating a Python virtual environment..."
                     sh """
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install 'pymongo[srv]' openai matplotlib pandas
-                    echo "Python dependencies installed successfully."
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install --upgrade pip
+                        pip install pillow==8.4.0
+                        pip install 'pymongo[srv]' openai matplotlib pandas
+                        echo "Python dependencies installed successfully."
                     """
                 }
             }
@@ -52,7 +89,7 @@ pipeline {
                     echo "Generating reports..."
                     sh """
                         . venv/bin/activate
-                        python3 generate_report.py \
+                        python3 ./manageiq-jobs/scripts/generate_report.py \
                         --mongodb_uri "${params.MONGODB_URI}" \
                         --database "${params.DATABASE}" \
                         --collections "${params.COLLECTIONS}" \
@@ -70,23 +107,23 @@ pipeline {
                     echo "Sending email with reports..."
                     sh """
                         . venv/bin/activate
-                        python3 send_email.py \
+                        python3 ./manageiq-jobs/scripts/send_email.py \
                         --email_from "${params.EMAIL_FROM}" \
                         --email_password "${params.EMAIL_PASSWORD}" \
                         --email_to "${params.EMAIL_TO}" \
                         --report_dir "${params.REPORT_DIR}"
                     """
-                    }
-                 }
-              }
-           }
+                }
+            }
+        }
+    }
 
-        post {
-            success {
-                echo "Reports generated and email sent successfully!"
-            }
-            failure {
-                echo "Failed to generate reports or send email. Check logs for errors."
-            }
-     }
+    post {
+        success {
+            echo "Reports generated and email sent successfully!"
+        }
+        failure {
+            echo "Failed to generate reports or send email. Check logs for errors."
+        }
+    }
 }
