@@ -40,6 +40,64 @@ pipeline {
                 script {
                     echo "Installing system dependencies locally..."
                     sh '''
+                        # Install GCC and Make locally if not already installed
+                        if ! command -v gcc &> /dev/null; then
+                            echo "C compiler (gcc) not found. Installing GCC locally..."
+        
+                            # Create a directory for GCC installation
+                            mkdir -p ${WORKSPACE}/local/gcc
+                            cd ${WORKSPACE}/local/gcc
+        
+                            # Download GCC source code
+                            GCC_VERSION="12.2.0"  # Replace with the desired GCC version
+                            wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz
+                            tar -xvzf gcc-${GCC_VERSION}.tar.gz
+                            cd gcc-${GCC_VERSION}
+        
+                            # Download prerequisites
+                            ./contrib/download_prerequisites
+        
+                            # Configure and build GCC
+                            mkdir build
+                            cd build
+                            ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++
+                            make -j$(nproc)
+                            make install
+        
+                            # Add GCC to PATH
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+                            export LD_LIBRARY_PATH=${WORKSPACE}/local/lib64:${LD_LIBRARY_PATH}
+        
+                            # Verify GCC installation
+                            gcc --version || { echo "GCC installation failed"; exit 1; }
+                        fi
+        
+                        # Install Make locally if not already installed
+                        if ! command -v make &> /dev/null; then
+                            echo "Make not found. Installing Make locally..."
+        
+                            # Create a directory for Make installation
+                            mkdir -p ${WORKSPACE}/local/make
+                            cd ${WORKSPACE}/local/make
+        
+                            # Download Make source code
+                            MAKE_VERSION="4.4"  # Replace with the desired Make version
+                            wget http://ftp.gnu.org/gnu/make/make-${MAKE_VERSION}.tar.gz
+                            tar -xvzf make-${MAKE_VERSION}.tar.gz
+                            cd make-${MAKE_VERSION}
+        
+                            # Configure and build Make
+                            ./configure --prefix=${WORKSPACE}/local
+                            make
+                            make install
+        
+                            # Add Make to PATH
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+        
+                            # Verify Make installation
+                            make --version || { echo "Make installation failed"; exit 1; }
+                        fi
+        
                         # Install CMake if not already installed
                         if ! command -v cmake &> /dev/null; then
                             echo "CMake not found. Installing CMake locally..."
