@@ -40,7 +40,7 @@ pipeline {
                 script {
                     echo "Installing system dependencies locally..."
                     sh '''
-                        # Install GCC and Make locally if not already installed
+                        # Install GCC locally if not already installed
                         if ! command -v gcc &> /dev/null; then
                             echo "C compiler (gcc) not found. Installing GCC locally..."
         
@@ -48,25 +48,15 @@ pipeline {
                             mkdir -p ${WORKSPACE}/local/gcc
                             cd ${WORKSPACE}/local/gcc
         
-                            # Download GCC source code
+                            # Download prebuilt GCC binary
                             GCC_VERSION="12.2.0"  # Replace with the desired GCC version
-                            wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz
-                            tar -xvzf gcc-${GCC_VERSION}.tar.gz
-                            cd gcc-${GCC_VERSION}
-        
-                            # Download prerequisites
-                            ./contrib/download_prerequisites
-        
-                            # Configure and build GCC
-                            mkdir build
-                            cd build
-                            ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++
-                            make -j$(nproc)
-                            make install
+                            GCC_ARCH="x86_64-linux-gnu"  # Adjust for your system architecture
+                            wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}-${GCC_ARCH}.tar.gz
+                            tar -xvzf gcc-${GCC_VERSION}-${GCC_ARCH}.tar.gz
         
                             # Add GCC to PATH
-                            export PATH=${WORKSPACE}/local/bin:${PATH}
-                            export LD_LIBRARY_PATH=${WORKSPACE}/local/lib64:${LD_LIBRARY_PATH}
+                            export PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}/bin:${PATH}
+                            export LD_LIBRARY_PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}/lib64:${LD_LIBRARY_PATH}
         
                             # Verify GCC installation
                             gcc --version || { echo "GCC installation failed"; exit 1; }
