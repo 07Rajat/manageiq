@@ -40,23 +40,62 @@ pipeline {
                 script {
                     echo "Installing system dependencies locally..."
                     sh '''
-                        # Install GCC locally if not already installed
+                        # Install Tiny C Compiler (TCC) if no C compiler is found
                         if ! command -v gcc &> /dev/null; then
-                            echo "C compiler (gcc) not found. Installing GCC locally..."
+                            echo "C compiler (gcc) not found. Installing Tiny C Compiler (TCC)..."
+        
+                            # Create a directory for TCC installation
+                            mkdir -p ${WORKSPACE}/local/tcc
+                            cd ${WORKSPACE}/local/tcc
+        
+                            # Download TCC source code
+                            TCC_VERSION="0.9.27"  # Replace with the desired TCC version
+                            wget https://download.savannah.gnu.org/releases/tinycc/tcc-${TCC_VERSION}.tar.gz
+                            tar -xvzf tcc-${TCC_VERSION}.tar.gz
+                            cd tcc-${TCC_VERSION}
+        
+                            # Build TCC
+                            ./configure --prefix=${WORKSPACE}/local
+                            make
+                            make install
+        
+                            # Add TCC to PATH
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+        
+                            # Verify TCC installation
+                            tcc --version || { echo "TCC installation failed"; exit 1; }
+        
+                            # Use TCC as the C compiler
+                            export CC=tcc
+                        fi
+        
+                        # Install GCC using TCC
+                        if ! command -v gcc &> /dev/null; then
+                            echo "Installing GCC using TCC..."
         
                             # Create a directory for GCC installation
                             mkdir -p ${WORKSPACE}/local/gcc
                             cd ${WORKSPACE}/local/gcc
         
-                            # Download prebuilt GCC binary
+                            # Download GCC source code
                             GCC_VERSION="12.2.0"  # Replace with the desired GCC version
-                            GCC_ARCH="x86_64-linux-gnu"  # Adjust for your system architecture
-                            wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}-${GCC_ARCH}.tar.gz
-                            tar -xvzf gcc-${GCC_VERSION}-${GCC_ARCH}.tar.gz
+                            wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz
+                            tar -xvzf gcc-${GCC_VERSION}.tar.gz
+                            cd gcc-${GCC_VERSION}
+        
+                            # Download prerequisites
+                            ./contrib/download_prerequisites
+        
+                            # Configure and build GCC using TCC
+                            mkdir build
+                            cd build
+                            ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++ CC=tcc
+                            make -j$(nproc)
+                            make install
         
                             # Add GCC to PATH
-                            export PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}/bin:${PATH}
-                            export LD_LIBRARY_PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}/lib64:${LD_LIBRARY_PATH}
+                            export PATH=${WORKSPACE}/local/bin:${PATH}
+                            export LD_LIBRARY_PATH=${WORKSPACE}/local/lib64:${LD_LIBRARY_PATH}
         
                             # Verify GCC installation
                             gcc --version || { echo "GCC installation failed"; exit 1; }
