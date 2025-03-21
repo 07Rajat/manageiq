@@ -47,7 +47,7 @@ pipeline {
                         wget https://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz -O zlib-1.2.11.tar.gz
                         tar -xvzf zlib-1.2.11.tar.gz
                         cd zlib-1.2.11
-                        ./configure --prefix=${WORKSPACE}/local
+                        CFLAGS="-O2" ./configure --prefix=${WORKSPACE}/local
                         make
                         make install
 
