@@ -44,7 +44,7 @@ pipeline {
                         cd ${WORKSPACE}
         
                         # Download and extract pre-built zlib binaries
-                        wget https://zlib.net/zlib-1.2.11.tar.gz -O zlib-1.2.11.tar.gz
+                        wget https://www.zlib.net/fossils/zlib-1.2.11.tar.gz -O zlib-1.2.11.tar.gz
                         tar -xvzf zlib-1.2.11.tar.gz
                         cd zlib-1.2.11
         
