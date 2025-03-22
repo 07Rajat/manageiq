@@ -1,11 +1,49 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml """
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: jenkins-agent
+            spec:
+              containers:
+              - name: jnlp
+                image: 07rajat/openapi:v1
+                resources:
+                  requests:
+                    cpu: "500m"
+                    memory: "1Gi"
+                  limits:
+                    cpu: "1"
+                    memory: "2Gi"
+                env:
+                - name: PATH
+                  value: "/opt/venv/bin:${PATH}"
+                - name: LD_LIBRARY_PATH
+                  value: "/usr/local/lib:${LD_LIBRARY_PATH}"
+                - name: CPATH
+                  value: "/usr/local/include:${CPATH}"
+                - name: LIBRARY_PATH
+                  value: "/usr/local/lib:${LIBRARY_PATH}"
+                volumeMounts:
+                - name: workspace-volume
+                  mountPath: /home/jenkins/agent
+              volumes:
+              - name: workspace-volume
+                emptyDir: {}
+            """
+            containerTemplate(name: 'jnlp', image: '07rajat/openapi:v1  ', ttyEnabled: true, command: 'cat')
+            registryUrl: 'https://index.docker.io/v1/'
+            registryCredentialsId: 'docker-hub-credentials'
+        }
+    }
 
     environment {
-        PATH = "${env.WORKSPACE}/venv/bin:${env.PATH}" // Add virtual environment to PATH
-        LD_LIBRARY_PATH = "${WORKSPACE}/local/lib:${env.LD_LIBRARY_PATH}"
-        CPATH = "${WORKSPACE}/local/include:${env.CPATH}"
-        LIBRARY_PATH = "${WORKSPACE}/local/lib:${env.LIBRARY_PATH}"
+        PATH = "/opt/venv/bin:${env.PATH}"
+        LD_LIBRARY_PATH = "/usr/local/lib:${env.LD_LIBRARY_PATH}"
+        CPATH = "/usr/local/include:${env.CPATH}"
+        LIBRARY_PATH = "/usr/local/lib:${env.LIBRARY_PATH}"
     }
 
     parameters {
@@ -35,134 +73,14 @@ pipeline {
             }
         }
 
-    stage('Install System Dependencies') {
-        steps {
-            script {
-                echo "Installing system dependencies locally..."
-                sh '''
-                    # Install GCC locally if not already installed
-                    if ! command -v gcc &> /dev/null; then
-                        echo "C compiler (gcc) not found. Installing GCC locally..."
-    
-                        # Create a directory for GCC installation
-                        mkdir -p ${WORKSPACE}/local/gcc
-                        cd ${WORKSPACE}/local/gcc
-    
-                        # Download prebuilt GCC binary from a trusted source
-                        GCC_VERSION="12.2.0"  # Replace with the desired GCC version
-                        GCC_ARCH="x86_64"     # Adjust for your system architecture
-                        GCC_URL="https://github.com/brechtsanders/gcc_ci/releases/download/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz"
-                        wget ${GCC_URL} -O gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz
-                        tar -xvzf gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu.tar.gz
-    
-                        # Add GCC to PATH
-                        export PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu/bin:${PATH}
-                        export LD_LIBRARY_PATH=${WORKSPACE}/local/gcc/gcc-${GCC_VERSION}-${GCC_ARCH}-linux-gnu/lib64:${LD_LIBRARY_PATH}
-    
-                        # Verify GCC installation
-                        gcc --version || { echo "GCC installation failed"; exit 1; }
-                    fi
-    
-                    # Install Make locally if not already installed
-                    if ! command -v make &> /dev/null; then
-                        echo "Make not found. Installing Make locally..."
-    
-                        # Create a directory for Make installation
-                        mkdir -p ${WORKSPACE}/local/make
-                        cd ${WORKSPACE}/local/make
-    
-                        # Download Make source code
-                        MAKE_VERSION="4.4"  # Replace with the desired Make version
-                        wget http://ftp.gnu.org/gnu/make/make-${MAKE_VERSION}.tar.gz
-                        tar -xvzf make-${MAKE_VERSION}.tar.gz
-                        cd make-${MAKE_VERSION}
-    
-                        # Configure and build Make
-                        ./configure --prefix=${WORKSPACE}/local
-                        make
-                        make install
-    
-                        # Add Make to PATH
-                        export PATH=${WORKSPACE}/local/bin:${PATH}
-    
-                        # Verify Make installation
-                        make --version || { echo "Make installation failed"; exit 1; }
-                    fi
-    
-                    # Install CMake if not already installed
-                    if ! command -v cmake &> /dev/null; then
-                        echo "CMake not found. Installing CMake locally..."
-                        
-                        # Create a directory for CMake installation
-                        mkdir -p ${WORKSPACE}/local/cmake
-                        cd ${WORKSPACE}/local/cmake
-    
-                        # Download CMake source code
-                        CMAKE_VERSION="3.26.4"  # Replace with the desired CMake version
-                        wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
-                        tar -xvzf cmake-${CMAKE_VERSION}.tar.gz
-                        cd cmake-${CMAKE_VERSION}
-    
-                        # Build and install CMake locally
-                        ./bootstrap --prefix=${WORKSPACE}/local
-                        make
-                        make install
-    
-                        # Add CMake to PATH
-                        export PATH=${WORKSPACE}/local/bin:${PATH}
-    
-                        # Verify CMake installation
-                        cmake --version || { echo "CMake installation failed"; exit 1; }
-                    fi
-    
-                    mkdir -p ${WORKSPACE}/local
-                    cd ${WORKSPACE}
-    
-                    # Download and extract pre-built zlib binaries
-                    wget https://www.zlib.net/fossils/zlib-1.2.11.tar.gz -O zlib-1.2.11.tar.gz
-                    tar -xvzf zlib-1.2.11.tar.gz
-                    cd zlib-1.2.11
-    
-                    # Set environment variables to use the pre-built zlib
-                    export LD_LIBRARY_PATH=${WORKSPACE}/zlib-1.2.11/lib:${LD_LIBRARY_PATH}
-                    export CPATH=${WORKSPACE}/zlib-1.2.11/include:${CPATH}
-                    export LIBRARY_PATH=${WORKSPACE}/zlib-1.2.11/lib:${LIBRARY_PATH}
-    
-                    # Download and install libjpeg-turbo
-                    wget https://downloads.sourceforge.net/libjpeg-turbo/libjpeg-turbo-2.1.3.tar.gz
-                    tar -xvzf libjpeg-turbo-2.1.3.tar.gz
-                    cd libjpeg-turbo-2.1.3
-    
-                    # Use CMake to configure and build libjpeg-turbo
-                    mkdir build
-                    cd build
-                    cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${WORKSPACE}/local ..
-                    make
-                    make install
-    
-                    # Download and install freetype
-                    wget https://download.savannah.gnu.org/releases/freetype/freetype-2.11.0.tar.gz
-                    tar -xvzf freetype-2.11.0.tar.gz
-                    cd freetype-2.11.0
-                    ./configure --prefix=${WORKSPACE}/local
-                    make
-                    make install
-                '''
-            }
-        }
-    }
-
-        stage('Install Python Dependencies') {
+        stage('Copy Scripts to Temporary Directory') {
             steps {
                 script {
-                    echo "Creating and activating a Python virtual environment..."
+                    echo "Copying scripts to temporary directory..."
                     sh """
-                        python3 -m venv venv
-                        . venv/bin/activate
-                        pip install --upgrade pip
-                        pip install pillow==8.4.0
-                        pip install 'pymongo[srv]' openai matplotlib pandas
-                        echo "Python dependencies installed successfully."
+                        mkdir -p /tmp/scripts
+                        cp ./manageiq-jobs/scripts/generate_report.py /tmp/scripts/
+                        cp ./manageiq-jobs/scripts/send_report.py /tmp/scripts/
                     """
                 }
             }
@@ -173,8 +91,7 @@ pipeline {
                 script {
                     echo "Generating reports..."
                     sh """
-                        . venv/bin/activate
-                        python3 generate_report.py \
+                        python3 /tmp/scripts/generate_report.py \
                         --mongodb_uri "${params.MONGODB_URI}" \
                         --database "${params.DATABASE}" \
                         --collections "${params.COLLECTIONS}" \
@@ -191,8 +108,7 @@ pipeline {
                 script {
                     echo "Sending email with reports..."
                     sh """
-                        . venv/bin/activate
-                        python3 send_email.py \
+                        python3 /tmp/scripts/send_report.py \
                         --email_from "${params.EMAIL_FROM}" \
                         --email_password "${params.EMAIL_PASSWORD}" \
                         --email_to "${params.EMAIL_TO}" \
