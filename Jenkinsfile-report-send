@@ -48,9 +48,9 @@ pipeline {
                         mkdir -p ${WORKSPACE}/local/tcc
                         cd ${WORKSPACE}/local/tcc
     
-                        # Download TCC source code
+                        # Download TCC source code from an alternative source
                         TCC_VERSION="0.9.27"  # Replace with the desired TCC version
-                        wget https://download.savannah.gnu.org/releases/tinycc/tcc-${TCC_VERSION}.tar.gz
+                        wget https://download-mirror.savannah.gnu.org/releases/tinycc/tcc-${TCC_VERSION}.tar.gz -O tcc-${TCC_VERSION}.tar.gz
                         tar -xvzf tcc-${TCC_VERSION}.tar.gz
                         cd tcc-${TCC_VERSION}
     
