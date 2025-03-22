@@ -2,38 +2,38 @@ pipeline {
     agent {
         kubernetes {
             yaml """
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              name: jenkins-agent
-            spec:
-              containers:
-              - name: jnlp
-                image: 07rajat/openapi:v1
-                resources:
-                  requests:
-                    cpu: "500m"
-                    memory: "1Gi"
-                  limits:
-                    cpu: "1"
-                    memory: "2Gi"
-                env:
-                - name: PATH
-                  value: "/opt/venv/bin:${PATH}"
-                - name: LD_LIBRARY_PATH
-                  value: "/usr/local/lib:${LD_LIBRARY_PATH}"
-                - name: CPATH
-                  value: "/usr/local/include:${CPATH}"
-                - name: LIBRARY_PATH
-                  value: "/usr/local/lib:${LIBRARY_PATH}"
-                volumeMounts:
-                - name: workspace-volume
-                  mountPath: /home/jenkins/agent
-              volumes:
-              - name: workspace-volume
-                emptyDir: {}
-            """
-            containerTemplate(name: 'jnlp', image: '07rajat/openapi:v1  ', ttyEnabled: true, command: 'cat')
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jenkins-agent
+spec:
+  containers:
+  - name: jnlp
+    image: 07rajat/openapi:v1
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+    env:
+    - name: PATH
+      value: "/opt/venv/bin:${PATH}"
+    - name: LD_LIBRARY_PATH
+      value: "/usr/local/lib:${LD_LIBRARY_PATH}"
+    - name: CPATH
+      value: "/usr/local/include:${CPATH}"
+    - name: LIBRARY_PATH
+      value: "/usr/local/lib:${LIBRARY_PATH}"
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /home/jenkins/agent
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
+"""
+            containerTemplate(name: 'jnlp', image: '07rajat/openapi:v1', ttyEnabled: true, command: 'cat')
             registryUrl: 'https://index.docker.io/v1/'
             registryCredentialsId: 'docker-hub-credentials'
         }
