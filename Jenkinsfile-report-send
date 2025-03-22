@@ -1,42 +1,5 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
-apiVersion: v1
-kind: Pod
-metadata:
-  name: jenkins-agent
-spec:
-  containers:
-  - name: jnlp
-    image: 07rajat/openapi:v1
-    tty: true
-    command: ['cat']
-    resources:
-      requests:
-        cpu: "300m"
-        memory: "1Gi"
-      limits:
-        cpu: "100m"
-        memory: "2Gi"
-    env:
-    - name: PATH
-      value: "/opt/venv/bin:\$PATH"
-    - name: LD_LIBRARY_PATH
-      value: "/usr/local/lib:\$LD_LIBRARY_PATH"
-    - name: CPATH
-      value: "/usr/local/include:\$CPATH"
-    - name: LIBRARY_PATH
-      value: "/usr/local/lib:\$LIBRARY_PATH"
-    volumeMounts:
-    - name: workspace-volume
-      mountPath: /home/jenkins/agent
-  volumes:
-  - name: workspace-volume
-    emptyDir: {}
-"""
-        }
-    }
+    agent none  // No global agent
 
     environment {
         PATH = "/opt/venv/bin:${env.PATH}"
@@ -60,6 +23,7 @@ spec:
 
     stages {
         stage('Checkout Repository') {
+            agent any  // Use the default Jenkins agent
             steps {
                 script {
                     echo "Checking out the repository..."
@@ -73,6 +37,7 @@ spec:
         }
 
         stage('Copy Scripts to Temporary Directory') {
+            agent any  // Use the default Jenkins agent
             steps {
                 script {
                     echo "Copying scripts to temporary directory..."
@@ -86,6 +51,14 @@ spec:
         }
 
         stage('Generate Reports') {
+            agent {
+                docker {
+                    image '07rajat/openapi:v1'  // Use your custom Docker image
+                    args '-v /tmp/scripts:/tmp/scripts'  // Mount the scripts directory
+                    registryUrl 'https://index.docker.io/v1/'  // Docker Hub registry URL
+                    registryCredentialsId 'docker-hub-credentials'  // Credentials ID
+                }
+            }
             steps {
                 script {
                     echo "Generating reports..."
@@ -103,6 +76,7 @@ spec:
         }
 
         stage('Send Email') {
+            agent any  // Use the default Jenkins agent
             steps {
                 script {
                     echo "Sending email with reports..."
