@@ -40,72 +40,99 @@ pipeline {
             script {
                 echo "Installing system dependencies locally..."
                 sh '''
-                    # Install GCC locally if not already installed
+                    # Install Tiny C Compiler (TCC) if no C compiler is found
                     if ! command -v gcc &> /dev/null; then
-                        echo "C compiler (gcc) not found. Installing GCC locally..."
-            
+                        echo "C compiler (gcc) not found. Installing Tiny C Compiler (TCC)..."
+    
+                        # Create a directory for TCC installation
+                        mkdir -p ${WORKSPACE}/local/tcc
+                        cd ${WORKSPACE}/local/tcc
+    
+                        # Download TCC source code
+                        TCC_VERSION="0.9.27"  # Replace with the desired TCC version
+                        wget https://download.savannah.gnu.org/releases/tinycc/tcc-${TCC_VERSION}.tar.gz
+                        tar -xvzf tcc-${TCC_VERSION}.tar.gz
+                        cd tcc-${TCC_VERSION}
+    
+                        # Build TCC
+                        ./configure --prefix=${WORKSPACE}/local
+                        make
+                        make install
+    
+                        # Add TCC to PATH
+                        export PATH=${WORKSPACE}/local/bin:${PATH}
+    
+                        # Verify TCC installation
+                        tcc --version || { echo "TCC installation failed"; exit 1; }
+    
+                        # Use TCC as the C compiler
+                        export CC=tcc
+                    fi
+    
+                    # Install GCC using TCC
+                    if ! command -v gcc &> /dev/null; then
+                        echo "Installing GCC using TCC..."
+    
                         # Create a directory for GCC installation
                         mkdir -p ${WORKSPACE}/local/gcc
                         cd ${WORKSPACE}/local/gcc
-            
-                        # Download prebuilt GCC binary from a trusted source
+    
+                        # Download GCC source code
                         GCC_VERSION="12.2.0"  # Replace with the desired GCC version
-                        GCC_ARCH="x86_64"     # Adjust for your system architecture
-                        GCC_URL="https://mirrors.kernel.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz"
-                        wget ${GCC_URL} -O gcc-${GCC_VERSION}.tar.gz
+                        wget http://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz
                         tar -xvzf gcc-${GCC_VERSION}.tar.gz
                         cd gcc-${GCC_VERSION}
-            
+    
                         # Download prerequisites
                         ./contrib/download_prerequisites
-            
+    
                         # Remove the existing build directory if it exists
                         if [ -d "build" ]; then
                             echo "Removing existing build directory..."
                             rm -rf build
                         fi
-            
-                        # Configure and build GCC
+    
+                        # Configure and build GCC using TCC
                         mkdir build
                         cd build
-                        ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++
+                        ../configure --prefix=${WORKSPACE}/local --disable-multilib --enable-languages=c,c++ CC=tcc
                         make -j$(nproc)
                         make install
-            
+    
                         # Add GCC to PATH
                         export PATH=${WORKSPACE}/local/bin:${PATH}
                         export LD_LIBRARY_PATH=${WORKSPACE}/local/lib64:${LD_LIBRARY_PATH}
-            
+    
                         # Verify GCC installation
                         gcc --version || { echo "GCC installation failed"; exit 1; }
                     fi
-            
+    
                     # Install Make locally if not already installed
                     if ! command -v make &> /dev/null; then
                         echo "Make not found. Installing Make locally..."
-            
+    
                         # Create a directory for Make installation
                         mkdir -p ${WORKSPACE}/local/make
                         cd ${WORKSPACE}/local/make
-            
+    
                         # Download Make source code
                         MAKE_VERSION="4.4"  # Replace with the desired Make version
                         wget http://ftp.gnu.org/gnu/make/make-${MAKE_VERSION}.tar.gz
                         tar -xvzf make-${MAKE_VERSION}.tar.gz
                         cd make-${MAKE_VERSION}
-            
+    
                         # Configure and build Make
                         ./configure --prefix=${WORKSPACE}/local
                         make
                         make install
-            
+    
                         # Add Make to PATH
                         export PATH=${WORKSPACE}/local/bin:${PATH}
-            
+    
                         # Verify Make installation
                         make --version || { echo "Make installation failed"; exit 1; }
                     fi
-            
+    
                     # Install CMake if not already installed
                     if ! command -v cmake &> /dev/null; then
                         echo "CMake not found. Installing CMake locally..."
@@ -113,50 +140,50 @@ pipeline {
                         # Create a directory for CMake installation
                         mkdir -p ${WORKSPACE}/local/cmake
                         cd ${WORKSPACE}/local/cmake
-            
+    
                         # Download CMake source code
                         CMAKE_VERSION="3.26.4"  # Replace with the desired CMake version
                         wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
                         tar -xvzf cmake-${CMAKE_VERSION}.tar.gz
                         cd cmake-${CMAKE_VERSION}
-            
+    
                         # Build and install CMake locally
                         ./bootstrap --prefix=${WORKSPACE}/local
                         make
                         make install
-            
+    
                         # Add CMake to PATH
                         export PATH=${WORKSPACE}/local/bin:${PATH}
-            
+    
                         # Verify CMake installation
                         cmake --version || { echo "CMake installation failed"; exit 1; }
                     fi
-            
+    
                     mkdir -p ${WORKSPACE}/local
                     cd ${WORKSPACE}
-            
+    
                     # Download and extract pre-built zlib binaries
                     wget https://www.zlib.net/fossils/zlib-1.2.11.tar.gz -O zlib-1.2.11.tar.gz
                     tar -xvzf zlib-1.2.11.tar.gz
                     cd zlib-1.2.11
-            
+    
                     # Set environment variables to use the pre-built zlib
                     export LD_LIBRARY_PATH=${WORKSPACE}/zlib-1.2.11/lib:${LD_LIBRARY_PATH}
                     export CPATH=${WORKSPACE}/zlib-1.2.11/include:${CPATH}
                     export LIBRARY_PATH=${WORKSPACE}/zlib-1.2.11/lib:${LIBRARY_PATH}
-            
+    
                     # Download and install libjpeg-turbo
                     wget https://downloads.sourceforge.net/libjpeg-turbo/libjpeg-turbo-2.1.3.tar.gz
                     tar -xvzf libjpeg-turbo-2.1.3.tar.gz
                     cd libjpeg-turbo-2.1.3
-            
+    
                     # Use CMake to configure and build libjpeg-turbo
                     mkdir build
                     cd build
                     cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${WORKSPACE}/local ..
                     make
                     make install
-            
+    
                     # Download and install freetype
                     wget https://download.savannah.gnu.org/releases/freetype/freetype-2.11.0.tar.gz
                     tar -xvzf freetype-2.11.0.tar.gz
