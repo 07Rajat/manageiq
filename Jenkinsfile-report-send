@@ -1,11 +1,9 @@
 pipeline {
-    agent none  // No global agent
+    agent any
 
     environment {
-        PATH = "/opt/venv/bin:${env.PATH}"
-        LD_LIBRARY_PATH = "/usr/local/lib:${env.LD_LIBRARY_PATH}"
-        CPATH = "/usr/local/include:${env.CPATH}"
-        LIBRARY_PATH = "/usr/local/lib:${env.LIBRARY_PATH}"
+        // Set environment variables if needed
+        PYTHON_PATH = "/usr/local/bin" // Default Python path
     }
 
     parameters {
@@ -23,7 +21,6 @@ pipeline {
 
     stages {
         stage('Checkout Repository') {
-            agent any  // Use the default Jenkins agent
             steps {
                 script {
                     echo "Checking out the repository..."
@@ -36,34 +33,62 @@ pipeline {
             }
         }
 
-        stage('Copy Scripts to Temporary Directory') {
-            agent any  // Use the default Jenkins agent
+        stage('Install System Dependencies') {
             steps {
                 script {
-                    echo "Copying scripts to temporary directory..."
+                    echo "Checking for system dependencies..."
+                    def packages = [
+                        "python3",
+                        "python3-pip",
+                        "python3-venv",
+                        "libssl-dev",
+                        "libffi-dev",
+                        "libxml2-dev",
+                        "libxslt1-dev",
+                        "zlib1g-dev",
+                        "libjpeg-dev",
+                        "libpng-dev"
+                    ]
+
+                    // Check if each package is installed
+                    def missingPackages = []
+                    for (pkg in packages) {
+                        def result = sh(script: "dpkg -l | grep -E '^ii\\s+${pkg}\\s'", returnStatus: true)
+                        if (result != 0) {
+                            missingPackages.add(pkg)
+                        }
+                    }
+
+                    // Install missing packages
+                    if (missingPackages) {
+                        echo "Installing missing system dependencies: ${missingPackages}"
+                        sh """
+                        apt-get update && apt-get install -y ${missingPackages.join(" ")}
+                        """
+                    } else {
+                        echo "All system dependencies are already installed."
+                    }
+                }
+            }
+        }
+
+        stage('Install Python Dependencies') {
+            steps {
+                script {
+                    echo "Installing Python dependencies..."
                     sh """
-                        mkdir -p /tmp/scripts
-                        cp ./manageiq-jobs/scripts/generate_report.py /tmp/scripts/
-                        cp ./manageiq-jobs/scripts/send_report.py /tmp/scripts/
+                    pip3 install pymongo[srv] openai matplotlib pandas
                     """
                 }
             }
         }
 
         stage('Generate Reports') {
-            agent {
-                docker {
-                    image '07rajat/openapi:v1'  // Use your custom Docker image
-                    args '-v /tmp/scripts:/tmp/scripts'  // Mount the scripts directory
-                    registryUrl 'https://index.docker.io/v1/'  // Docker Hub registry URL
-                    registryCredentialsId 'docker-hub-credentials'  // Credentials ID
-                }
-            }
             steps {
                 script {
                     echo "Generating reports..."
                     sh """
-                        python3 /tmp/scripts/generate_report.py \
+                    python3 ./manageiq-jobs/scripts/generate_report.py \
                         --mongodb_uri "${params.MONGODB_URI}" \
                         --database "${params.DATABASE}" \
                         --collections "${params.COLLECTIONS}" \
@@ -76,12 +101,11 @@ pipeline {
         }
 
         stage('Send Email') {
-            agent any  // Use the default Jenkins agent
             steps {
                 script {
                     echo "Sending email with reports..."
                     sh """
-                        python3 /tmp/scripts/send_report.py \
+                    python3 ./manageiq-jobs/scripts/send_email.py \
                         --email_from "${params.EMAIL_FROM}" \
                         --email_password "${params.EMAIL_PASSWORD}" \
                         --email_to "${params.EMAIL_TO}" \
