@@ -187,7 +187,7 @@ def convert_objectid_to_str(data):
 
 def generate_insights(mongodb_data, collection, openai_api_key):
     """
-    Generate insights using OpenAI's GPT-4 model.
+    Generate insights using OpenAI's GPT-4o model.
     """
     try:
         mongodb_data = convert_objectid_to_str(mongodb_data)
@@ -197,7 +197,7 @@ def generate_insights(mongodb_data, collection, openai_api_key):
 
         # Generate insights for resource allocation
         response_allocation = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",  # Use gpt-4o instead of gpt-4
             messages=[
                 {"role": "system", "content": "You are a DevOps engineer analyzing MongoDB data related to resource allocation."},
                 {"role": "user", "content": f"Analyze the following MongoDB data and generate a detailed report. Focus on CPU and memory allocations, and provide recommendations if the allocations seem unusual:\n{data_str}"}
@@ -207,7 +207,7 @@ def generate_insights(mongodb_data, collection, openai_api_key):
 
         # Generate insights for trend analysis
         response_trends = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",  # Use gpt-4o instead of gpt-4
             messages=[
                 {"role": "system", "content": "You are a DevOps engineer analyzing MongoDB data related to resource allocation over time."},
                 {"role": "user", "content": f"Analyze the following MongoDB data and identify trends or anomalies in CPU and memory allocations:\n{data_str}"}
@@ -217,7 +217,7 @@ def generate_insights(mongodb_data, collection, openai_api_key):
 
         # Generate insights for optimization suggestions
         response_optimization = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",  # Use gpt-4o instead of gpt-4
             messages=[
                 {"role": "system", "content": "You are a DevOps engineer analyzing MongoDB data related to resource allocation."},
                 {"role": "user", "content": f"Analyze the following MongoDB data and suggest optimizations for CPU and memory usage:\n{data_str}"}
