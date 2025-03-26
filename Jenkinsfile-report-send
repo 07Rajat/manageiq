@@ -34,69 +34,6 @@ pipeline {
             }
         }
 
-        stage('Install System Dependencies') {
-            steps {
-                script {
-                    echo "Checking for system dependencies..."
-                    def packages = [
-                        "python3",
-                        "python3-pip",
-                        "python3-venv",
-                        "libssl-dev",
-                        "libffi-dev",
-                        "libxml2-dev",
-                        "libxslt1-dev",
-                        "zlib1g-dev",
-                        "libjpeg-dev",
-                        "libpng-dev"
-                    ]
-
-                    // Check if each package is installed
-                    def missingPackages = []
-                    for (pkg in packages) {
-                        def result = sh(script: "dpkg -l | grep -E '^ii\\s+${pkg}\\s'", returnStatus: true)
-                        if (result != 0) {
-                            missingPackages.add(pkg)
-                        }
-                    }
-
-                    // Install missing packages
-                    if (missingPackages) {
-                        echo "Installing missing system dependencies: ${missingPackages}"
-                        sh """
-                        apt-get update && apt-get install -y ${missingPackages.join(" ")}
-                        """
-                    } else {
-                        echo "All system dependencies are already installed."
-                    }
-                }
-            }
-        }
-
-        stage('Set Up Virtual Environment') {
-            steps {
-                script {
-                    echo "Setting up Python virtual environment..."
-                    sh """
-                    python3 -m venv ${VENV_DIR}
-                    """
-                }
-            }
-        }
-
-        stage('Install Python Dependencies') {
-            steps {
-                script {
-                    echo "Installing Python dependencies..."
-                    sh """
-                    . ${VENV_DIR}/bin/activate && \
-                    pip install --upgrade pip && \
-                    pip install pymongo[srv] openai matplotlib pandas openpyxl
-                    """
-                }
-            }
-        }
-
         stage('Generate Reports') {
             steps {
                 script {
