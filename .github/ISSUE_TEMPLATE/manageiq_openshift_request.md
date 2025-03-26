@@ -9,6 +9,8 @@ assignees: ""
 ### **Request Type**  
 - [ ] **Create ManageIQ Instance**  
 - [ ] **Delete ManageIQ Instance**  
+- [ ] **Create OpenShift Cluster**  
+- [ ] **Delete OpenShift Cluster**    
 
 ---
 
