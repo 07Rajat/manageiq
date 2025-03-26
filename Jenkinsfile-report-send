@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        // Set environment variables if needed
-        PYTHON_PATH = "/usr/local/bin" // Default Python path
-        VENV_DIR = "${WORKSPACE}/venv" // Virtual environment directory
-    }
-
     parameters {
         string(name: 'MONGODB_URI', defaultValue: '', description: 'MongoDB connection URI')
         string(name: 'DATABASE', defaultValue: '', description: 'MongoDB database name')
@@ -17,22 +11,9 @@ pipeline {
         string(name: 'EMAIL_TO', defaultValue: '', description: 'Comma-separated list of recipient email addresses')
         string(name: 'REPORT_DIR', defaultValue: 'reports', description: 'Directory to save reports (default: "reports")')
         string(name: 'RATE_LIMIT_DELAY', defaultValue: '1', description: 'Rate limit delay in seconds (default: 1)')
-        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to checkout (default: main)')
     }
 
     stages {
-        stage('Checkout Repository') {
-            steps {
-                script {
-                    echo "Checking out the repository..."
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "${params.GIT_BRANCH}"]],
-                        userRemoteConfigs: [[url: 'https://github.com/07Rajat/manageiq.git']]
-                    ])
-                }
-            }
-        }
 
         stage('Generate Reports') {
             steps {

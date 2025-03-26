@@ -1,19 +1,12 @@
 #!/bin/bash
 
-# CLUSTER_NAME="${CLUSTER_NAME}"
-# MQ_SERVER="${MQ_SERVER}"
-# MQUSER="${MQUSER}"
-# MQPASS="${MQPASS}"
-
-# #!/bin/bash
-
 msg() {
   echo >&2 -e "${1-}"
 }
 
 die() {
   local msg=$1
-  local code=${2:-1} # default return code is 1
+  local code=${2:-1}
   msg "$msg"
   exit "${code}"
 }
@@ -61,7 +54,6 @@ parse_params() {
 
   args=("$@")
 
-  # check required params and arguments
   [[ -z "${CLUSTER_NAME-}" ]] && die "Missing --clustername parameter"
   [[ -z "${MQ_SERVER}" ]] && die "Missing --mqserver parameter"
   [[ -z "${MQUSER-}" ]] && die "Missing --mquser parameter"
@@ -72,11 +64,10 @@ parse_params() {
 function main() {
 
     echo $CLUSTER_NAME
-    # Fetch Cluster id from manageiq
+
     id=$(curl --user $MQUSER:$MQPASS --insecure --request GET --header "Content-Type: application/json" ${MQ_SERVER}/api/providers --get --data "expand=resources" --data "filter[]=name='$CLUSTER_NAME'" | jq -r '.resources[].id')
     echo "deleting entry from manageiq with id:$id"
 
-    # Remove Cluster entry to manageIQ
     curl --user $MQUSER:$MQPASS --insecure --request DELETE ${MQ_SERVER}/api/providers/${id}
     returnCode=$?
     if [[ ${returnCode} != 0 ]]; then
