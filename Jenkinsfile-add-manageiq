@@ -18,8 +18,8 @@ pipeline {
                     echo "Running 'add' job..."
                     echo "Adding cluster: ${params.CLUSTER_NAME}"
                     sh """
-                    chmod +x ./manageiq-jobs/scripts/add_cluster.sh
-                    ./manageiq-jobs/scripts/add_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                    chmod +x ./manageiq-jobs/scripts/add_manageiq_cluster.sh
+                    ./manageiq-jobs/scripts/add_manageiq_cluster.sh -n ${params.CLUSTER_NAME} -u ${params.USERNAME} -p ${params.PASSWORD} -s ${params.OCP_URL} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
                     """
                 }
             }

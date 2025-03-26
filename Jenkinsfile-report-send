@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'MONGODB_URI', defaultValue: '', description: 'MongoDB connection URI')
+        string(name: 'DATABASE', defaultValue: '', description: 'MongoDB database name')
+        string(name: 'COLLECTIONS', defaultValue: '', description: 'Comma-separated list of collections')
+        string(name: 'OPENAI_API_KEY', defaultValue: '', description: 'OpenAI API key')
+        string(name: 'EMAIL_FROM', defaultValue: '', description: 'Sender email address')
+        string(name: 'EMAIL_PASSWORD', defaultValue: '', description: 'Sender email password')
+        string(name: 'EMAIL_TO', defaultValue: '', description: 'Comma-separated list of recipient email addresses')
+        string(name: 'REPORT_DIR', defaultValue: 'reports', description: 'Directory to save reports (default: "reports")')
+        string(name: 'RATE_LIMIT_DELAY', defaultValue: '1', description: 'Rate limit delay in seconds (default: 1)')
+    }
+
+    stages {
+
+        stage('Generate Reports') {
+            steps {
+                script {
+                    sh """
+                        python3 ./manageiq-jobs/scripts/generate_report.py \
+                            --mongodb_uri "${params.MONGODB_URI}" \
+                            --database "${params.DATABASE}" \
+                            --collections "${params.COLLECTIONS}" \
+                            --openai_api_key "${params.OPENAI_API_KEY}" \
+                            --report_dir "${params.REPORT_DIR}" \
+                            --rate_limit_delay "${params.RATE_LIMIT_DELAY}"
+                    """
+                    }
+                }
+            }
+
+
+        stage('Send Email') {
+            steps {
+                script {
+                    sh """
+                        python3 ./manageiq-jobs/scripts/send_email.py \
+                            --email_from "${params.EMAIL_FROM}" \
+                            --email_password "${params.EMAIL_PASSWORD}" \
+                            --email_to "${params.EMAIL_TO}" \
+                            --report_dir "${params.REPORT_DIR}"
+                    """
+                    }
+                }
+            }
+        }
+
+    post {
+        success {
+            echo "Reports generated and email sent successfully!"
+        }
+        failure {
+            echo "Failed to generate reports or send email. Check logs for errors."
+        }
+    }
+}

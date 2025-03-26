@@ -1,0 +1,171 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IBM_API_KEY', defaultValue: '', description: 'IBM Cloud API key')
+        string(name: 'TEAM_NAME', defaultValue: '', description: 'Enter the Team Name')
+        string(name: 'DB_NAME', defaultValue: '', description: 'Enter the Database Name')
+        string(name: 'MongoURL', defaultValue: '', description: 'Enter the MongoDB URL')
+        string(name: 'REQUESTED_CPU', defaultValue: '', description: 'Requested CPU')
+        string(name: 'REQUESTED_MEMORY', defaultValue: '', description: 'Requested Memory (GB)')
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    dir('manageiq') {
+                        sh '''
+                            git init
+                            if git remote | grep -q origin; then
+                                git remote set-url origin https://github.com/07Rajat/manageiq.git
+                            else
+                                git remote add origin https://github.com/07Rajat/manageiq.git
+                            fi
+                            git fetch origin master
+                        '''
+                    }
+
+                    dir('terraform-repo') {
+                        sh '''
+                            git init
+                            if git remote | grep -q origin; then
+                                git remote set-url origin https://github.com/07Rajat/terraform-repo.git
+                            else
+                                git remote add origin https://github.com/07Rajat/terraform-repo.git
+                            fi
+                            git fetch origin master
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Fetch Resource Allocation') {
+            steps {
+                script {
+                    def teamName = params.TEAM_NAME
+                    def requestedCPU = params.REQUESTED_CPU.toInteger()
+                    def requestedMemory = params.REQUESTED_MEMORY.toInteger()
+
+                    dir('manageiq') {
+                        def fetchOutput = sh(
+                            script: "python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${teamName}' '${params.MongoURL}'",
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Fetch output: ${fetchOutput}"
+
+                        if (!fetchOutput?.trim()) {
+                            error "Error: Fetch output is empty. Check if the script executed correctly."
+                        }
+
+                        try {
+                            def resourceData = readJSON(text: fetchOutput)
+
+                            echo "Resource Data: ${resourceData}"
+                            echo "Allocated CPU: ${resourceData.allocated_cpu}, Type: ${resourceData.allocated_cpu.getClass()}"
+                            echo "Allocated Memory: ${resourceData.allocated_memory_gb}, Type: ${resourceData.allocated_memory_gb.getClass()}"
+
+                            if (resourceData.containsKey('error')) {
+                                error "Error: ${resourceData.error}"
+                            }
+
+                            def allocatedCPU = resourceData.allocated_cpu
+                            def allocatedMemory = resourceData.allocated_memory_gb
+
+                            if (allocatedCPU == null || !allocatedCPU.toString().isNumber()) {
+                                error "Error: allocated_cpu is not a valid number."
+                            }
+                            if (allocatedMemory == null || !allocatedMemory.toString().isNumber()) {
+                                error "Error: allocated_memory_gb is not a valid number."
+                            }
+
+                            allocatedCPU = allocatedCPU.toInteger()
+                            allocatedMemory = allocatedMemory.toInteger()
+
+                            env.ALLOCATED_CPU = allocatedCPU
+                            env.ALLOCATED_MEMORY = allocatedMemory
+
+                        } catch (Exception e) {
+                            error "Error parsing JSON output: ${e.message}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Initialize Terraform Providers') {
+            steps {
+                script {
+                    dir('terraform-repo/ibm-cloud') {
+                        sh '''
+                            # Initialize Terraform
+                            terraform init
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Run Delete Cluster Script') {
+            steps {
+                script {
+                    echo "ALLOCATED_CPU type: ${env.ALLOCATED_CPU.getClass()}"
+                    echo "REQUESTED_CPU type: ${params.REQUESTED_CPU.getClass()}"
+                    echo "ALLOCATED_MEMORY type: ${env.ALLOCATED_MEMORY.getClass()}"
+                    echo "REQUESTED_MEMORY type: ${params.REQUESTED_MEMORY.getClass()}"
+
+                    def allocatedCPU = env.ALLOCATED_CPU.toInteger()
+                    def requestedCPU = params.REQUESTED_CPU.toInteger()
+                    def allocatedMemory = env.ALLOCATED_MEMORY.toInteger()
+                    def requestedMemory = params.REQUESTED_MEMORY.toInteger()
+
+                    echo "ALLOCATED_CPU (converted): ${allocatedCPU}"
+                    echo "REQUESTED_CPU (converted): ${requestedCPU}"
+                    echo "ALLOCATED_MEMORY (converted): ${allocatedMemory}"
+                    echo "REQUESTED_MEMORY (converted): ${requestedMemory}"
+
+                    def updatedCPU = allocatedCPU + requestedCPU
+                    def updatedMemory = allocatedMemory + requestedMemory
+
+                    echo "Updated CPU: ${updatedCPU}"
+                    echo "Updated Memory: ${updatedMemory}"
+
+                    dir('manageiq') {
+                        def updateCommand = """
+                            python3 ./manageiq-jobs/scripts/fetch_resources.py '${params.DB_NAME}' '${params.TEAM_NAME}' '${params.MongoURL}' delete ${requestedCPU} ${requestedMemory}
+                        """
+                        def updateOutput = sh(script: updateCommand, returnStdout: true).trim()
+                        echo "Update output: ${updateOutput}"
+
+                        def updateResult = readJSON(text: updateOutput)
+                        if (updateResult.containsKey('error')) {
+                            error "Error updating MongoDB: ${updateResult.error}"
+                        } else if (updateResult.containsKey('message')) {
+                            echo "Successfully updated MongoDB: ${updateResult.message}"
+                        } else {
+                            error "Unexpected response from fetch_resources.py: ${updateOutput}"
+                        }
+                    }
+
+                    dir('manageiq') {
+                        sh """
+                            chmod +x ./manageiq-jobs/scripts/delete-openshift-cluster.sh
+                            ./manageiq-jobs/scripts/delete-openshift-cluster.sh --ibm-api-key ${params.IBM_API_KEY} --repo-url ${params.REPO_URL}
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Cluster deletion completed successfully!"
+        }
+        failure {
+            echo "Cluster deletion failed. Check the logs for details."
+        }
+    }
+}

@@ -15,8 +15,8 @@ pipeline {
                     echo "Running 'delete' job..."
                     echo "Deleting cluster: ${params.CLUSTER_NAME}"
                     sh """
-                    chmod +x ./manageiq-jobs/scripts/delete_cluster.sh
-                    ./manageiq-jobs/scripts/delete_cluster.sh -n ${params.CLUSTER_NAME} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
+                    chmod +x ./manageiq-jobs/scripts/delete_manageiq_cluster.sh
+                    ./manageiq-jobs/scripts/delete_manageiq_cluster.sh -n ${params.CLUSTER_NAME} -m ${params.MQ_SERVER} -t ${params.MQUSER} -r ${params.MQPASS}
                     """
                 }
             }

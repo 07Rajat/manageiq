@@ -69,7 +69,6 @@ parse_params() {
 
   args=("$@")
 
-  # check required params and arguments
   [[ -z "${CLUSTER_NAME-}" ]] && die "Missing --clustername parameter"
   [[ -z "${USERNAME-}" ]] && die "Missing --username parameter"
   [[ -z "${PASSWORD-}" ]] && die "Missing --password parameter"
@@ -94,8 +93,6 @@ function main() {
 
     echo $PORT
 
-
-    # Create service account for manageIQ
     echo "oc login -u $USERNAME -p $PASSWORD $OCP_URL"
     oc login -u $USERNAME -p $PASSWORD $OCP_URL
     echo "oc login -u ${USERNAME} -p ${PASSWORD} ${OCP_URL}"
@@ -103,29 +100,22 @@ function main() {
     echo "oc login --server=${OCP_URL} --insecure-skip-tls-verify=true -u ${USERNAME} -p ${PASSWORD}"
     oc login --server="${OCP_URL}" --insecure-skip-tls-verify=true -u "${USERNAME}" -p "${PASSWORD}"
 
-    # Create a namespace for the service account
     oc adm new-project $PROJECT_NAME --description="ManageIQ Project"
 
-    # Create a service account in PROJECT_NAME="management-manageiq"
     oc create serviceaccount $SERVICE_ACCOUNT_NAME -n $PROJECT_NAME
 
-    # Create the cluster role
     echo '{"apiVersion": "authorization.openshift.io/v1", "kind": "ClusterRole", "metadata": {"name": "management-manageiq-admin"}, "rules": [{"resources": ["pods/proxy"], "verbs": ["*"]}]}' | oc create -f -
 
-    # Apply roles and policies to the service account
     oc policy add-role-to-user -n $PROJECT_NAME admin -z $SERVICE_ACCOUNT_NAME
     oc policy add-role-to-user -n $PROJECT_NAME management-manageiq-admin -z $SERVICE_ACCOUNT_NAME
     oc adm policy add-cluster-role-to-user cluster-reader system:serviceaccount:$PROJECT_NAME:$SERVICE_ACCOUNT_NAME
     oc adm policy add-scc-to-user privileged system:serviceaccount:$PROJECT_NAME:$SERVICE_ACCOUNT_NAME
     oc adm policy add-cluster-role-to-user self-provisioner system:serviceaccount:$PROJECT_NAME:$SERVICE_ACCOUNT_NAME
 
-    # Get the management service account token name
     TOKEN_NAME=$(oc describe sa -n $PROJECT_NAME $SERVICE_ACCOUNT_NAME | grep "Tokens:" | awk -F' ' '{print $2}')
 
-    # Get the token
     TOKEN=$(oc describe secret -n $PROJECT_NAME $TOKEN_NAME | grep "token:" | awk -F' ' '{print $2}')
 
-    # get prometheus metric route from cluster
     METRICS_ROUTE=$(oc get routes -n openshift-monitoring | grep prometheus-k8s-openshift-monitoring | awk -F' ' '{print $2}')
 
     # Add Cluster entry to manageIQ

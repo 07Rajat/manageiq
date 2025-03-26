@@ -1,0 +1,6 @@
+pymongo[srv]
+openai
+matplotlib
+pandas
+openpyxl
+pillow==8.4.0
