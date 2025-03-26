@@ -219,6 +219,20 @@ pipeline {
             }
         }
 
+        stage('Initialize Terraform Providers') {
+            steps {
+                script {
+                    // Navigate to the terraform-repo directory and initialize Terraform
+                    dir('terraform-repo/ibm-cloud') {
+                        sh '''
+                            # Initialize Terraform
+                            terraform init
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Run Delete Cluster Script') {
             steps {
                 script {
