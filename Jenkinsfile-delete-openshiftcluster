@@ -158,19 +158,6 @@ pipeline {
             }
         }
 
-        stage('Install Python Dependencies') {
-            steps {
-                script {
-                    // Install pymongo globally for the current user
-                    sh 'pip3 install --user pymongo[srv]'
-
-                    // Add the user's Python packages to PATH
-                    sh 'echo "export PATH=${PYTHON_PATH}:${PATH}" >> ${HOME}/.bashrc'
-                    sh 'source ${HOME}/.bashrc'
-                }
-            }
-        }
-
         stage('Fetch Resource Allocation') {
             steps {
                 script {
