@@ -1,8 +1,8 @@
 ---
-name: 🚀 ManageIQ Instance Request
-about: Request creation or deletion of a ManageIQ instance
-title: "[Request] [Create/Delete] ManageIQ for [Team Name]"
-labels: "infrastructure", "manageiq", "request"
+name: "ManageIQ/OpenShift Request"
+about: "Request creation or deletion of resources"
+title: "[Request] [Type] for [Team]"
+labels: "infrastructure, manageiq, request"
 assignees: ""
 ---
 
@@ -12,16 +12,13 @@ assignees: ""
 - [ ] **Create OpenShift Cluster**  
 - [ ] **Delete OpenShift Cluster**    
 
----
-
 ### **Requester Information**  
 | Field              | Value                        |
 |--------------------|------------------------------|
 | **Team Name**      | _e.g., Data Analytics Team_  |
 | **Contact Person** | _@mention / email_           |
 | **Urgency**        | Low / Medium / High          |
-
----
+| **JIRA Ticket** | Associated tracking ticket (if any) | "PROJ-1234" |
 
 ### **ManageIQ Instance Details**  
 | Field                 | Value                        |
@@ -30,8 +27,6 @@ assignees: ""
 | **Cloud Provider**    | AWS / IBM / GCP / Azure      |
 | **ManageIQ Server URL**| _e.g., `https://miq.example.com`_ |
 | **Cluster URL**       | _e.g., `https://cluster.example.com`_ |
-
----
 
 ### **OpenShift Cluster Details** _(if applicable)_  
 | Field                     | Value                          |
@@ -44,14 +39,10 @@ assignees: ""
 | **Storage per Node**      | _e.g., 200GB_                  |
 | **Networking**           | Ingress, CIDR, VPN, etc.       |
 
----
-
 ### **Justification**  
 > Briefly explain the purpose (e.g., new project, testing, decommissioning).  
-
----
 
 ### **Approval**  
 - [ ] **Approved by** `@infra-team`  
 - [ ] **Pending Review**  
-- [ ] **Rejected** (Reason: _____)  
+- [ ] **Rejected** (Reason: _____)
